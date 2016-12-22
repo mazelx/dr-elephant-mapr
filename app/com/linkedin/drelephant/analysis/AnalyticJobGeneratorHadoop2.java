@@ -19,7 +19,10 @@ package com.linkedin.drelephant.analysis;
 import com.linkedin.drelephant.ElephantContext;
 import com.linkedin.drelephant.math.Statistics;
 import controllers.MetricsController;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.IOException;
+import java.lang.Exception;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -47,6 +50,9 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
   private static final String RESOURCE_MANAGER_IDS = "yarn.resourcemanager.ha.rm-ids";
   private static final String RM_NODE_STATE_URL = "http://%s/ws/v1/cluster/info";
   private static Configuration configuration;
+  private static final String DISTRO_MAPR_FINDER = "hadoop version | grep mapr";
+  private static final String DISTRO_MAPR_RESOURCE_MANAGER_ADDRESS = "maprcli urls -name resourcemanager | grep http";
+  private static final String DISTRO_MAPR_NAME = "MapR";
 
   // We provide one minute job fetch delay due to the job sending lag from AM/NM to JobHistoryServer HDFS
   private static final long FETCH_DELAY = 60000;
@@ -67,6 +73,18 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
   private final Queue<AnalyticJob> _retryQueue = new ConcurrentLinkedQueue<AnalyticJob>();
 
   public void updateResourceManagerAddresses() {
+        String distroName = null;
+        String cmdOut;
+        logger.info("Looking for Hadoop distros such as MapR, Cloudera or Hortonworks...");
+        try {
+            cmdOut = executeShellCommand(DISTRO_MAPR_FINDER, 1);
+            if (! cmdOut.isEmpty()) {
+                logger.info(DISTRO_MAPR_NAME + " distro detected.");
+                distroName = DISTRO_MAPR_NAME;
+            }
+        } catch (Exception e) { distroName = null; }
+        if (distroName == null) {
+            logger.info("No specific Hadoop distro given; assuming standard ResourceManager config.");
     if (Boolean.valueOf(configuration.get(IS_RM_HA_ENABLED))) {
       String resourceManagers = configuration.get(RESOURCE_MANAGER_IDS);
       if (resourceManagers != null) {
@@ -91,7 +109,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
           } catch (AuthenticationException e) {
             logger.info("Error fetching resource manager " + id + " state " + e.getMessage());
           } catch (IOException e) {
-            logger.info("Error fetching Json for resource manager "+ id + " status " + e.getMessage());
+                            logger.info("Error fetching Json for resource manager " + id + " status " + e.getMessage());
           }
         }
       }
@@ -103,6 +121,21 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
               "Cannot get YARN resource manager address from Hadoop Configuration property: [" + RESOURCE_MANAGER_ADDRESS
                       + "].");
     }
+        } else {
+            logger.info(distroName+ " Hadoop distro specified in config; looking for ResourceManager.");
+            if (distroName == "MapR") {
+                _resourceManagerAddress = executeShellCommand(DISTRO_MAPR_RESOURCE_MANAGER_ADDRESS, 2);
+                if (_resourceManagerAddress == null) {
+                    throw new RuntimeException(
+                            "Cannot get YARN resource manager address from MapR CLI call: [" + DISTRO_MAPR_RESOURCE_MANAGER_ADDRESS
+                                    + "].");
+                }
+                _resourceManagerAddress = _resourceManagerAddress.replace("https://", "").replace("http://", "");
+            } else {
+                    throw new RuntimeException(
+                            "Unknown Hadoop distro specified: [" + distroName + "].");
+            }
+        }
   }
 
   @Override
@@ -235,4 +268,43 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
     }
     return appList;
   }
+
+    private String executeShellCommand(String command, long linenumber) {
+
+        if (linenumber < 0) {
+            return null;
+        }
+        StringBuffer output = new StringBuffer();
+
+        Process p;
+        try {
+            p = Runtime.getRuntime().exec(command);
+            p.waitFor();
+            BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+            String line = "";
+            if (linenumber == 0) {
+                while ((line = reader.readLine()) != null) {
+                    output.append(line + "\n");
+                }
+            } else {
+                long i = 1;
+                while ((line = reader.readLine()) != null && i <= linenumber) {
+                    if (i == linenumber) {
+                        output.append(line);
+                        break;
+                    }
+                    i = i + 1;
+                }
+
+            }
+
+        } catch (Exception e) {
+            logger.error(e.getMessage() + " at " + e.getStackTrace());
+        }
+
+        return output.toString();
+
+    }
 }

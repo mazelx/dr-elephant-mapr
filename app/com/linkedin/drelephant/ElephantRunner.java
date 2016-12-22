@@ -92,7 +92,7 @@ public class ElephantRunner implements Runnable {
 
   @Override
   public void run() {
-    logger.info("Dr.elephant has started");
+    logger.info("Dr. Elephant v2.0.6-CL has started");
     try {
       _hadoopSecurity = new HadoopSecurity();
       _hadoopSecurity.doAs(new PrivilegedAction<Void>() {
@@ -174,8 +174,27 @@ public class ElephantRunner implements Runnable {
         String analysisName = String.format("%s %s", _analyticJob.getAppType().getName(), _analyticJob.getAppId());
         long analysisStartTimeMillis = System.currentTimeMillis();
         logger.info(String.format("Analyzing %s", analysisName));
-        AppResult result = _analyticJob.getAnalysis();
-        result.save();
+        // AppResult result = _analyticJob.getAnalysis();
+        //result.save();
+        try {
+          AppResult result = _analyticJob.getAnalysis();
+          if (result.resourceUsed < 0) {
+            result.resourceUsed = 0;
+          }
+          if (result.resourceWasted < 0) {
+            result.resourceWasted = 0;
+          }
+          if (result.totalDelay < 0) {
+            result.totalDelay = 0;
+          }
+          result.save();
+        } catch (java.security.PrivilegedActionException e) {
+          // logger.info(e.getMessage() + "; ignoring.");
+        } catch (java.io.FileNotFoundException e) {
+          // logger.info(e.getMessage() + "; ignoring.");
+        } catch (Exception e) {
+          throw e;
+        }
         long processingTime = System.currentTimeMillis() - analysisStartTimeMillis;
         logger.info(String.format("Analysis of %s took %sms", analysisName, processingTime));
         MetricsController.setJobProcessingTime(processingTime);

@@ -53,6 +53,8 @@ class SparkLogClient(hadoopConfiguration: Configuration, sparkConf: SparkConf) {
     val eventLogUri = sparkConf.getOption(SPARK_EVENT_LOG_DIR_KEY).map(new URI(_))
     val dfsNamenodeHttpAddress = Option(hadoopConfiguration.get(HADOOP_DFS_NAMENODE_HTTP_ADDRESS_KEY))
     (eventLogUri, dfsNamenodeHttpAddress) match {
+      case (Some(eventLogUri), _) if eventLogUri.getScheme == "maprfs" =>
+        eventLogUri
       case (Some(eventLogUri), _) if eventLogUri.getScheme == "webhdfs" =>
         eventLogUri
       case (Some(eventLogUri), Some(dfsNamenodeHttpAddress)) if eventLogUri.getScheme == "hdfs" =>
@@ -60,7 +62,7 @@ class SparkLogClient(hadoopConfiguration: Configuration, sparkConf: SparkConf) {
         new URI(s"webhdfs://${eventLogUri.getHost}:${dfsNamenodeHttpUri.getPort}${eventLogUri.getPath}")
       case _ =>
         throw new IllegalArgumentException(
-          s"""|${SPARK_EVENT_LOG_DIR_KEY} must be provided as webhdfs:// or hdfs://;
+          s"""|${SPARK_EVENT_LOG_DIR_KEY} must be provided as maprfs://, webhdfs:// or hdfs://;
               |if hdfs, ${HADOOP_DFS_NAMENODE_HTTP_ADDRESS_KEY} must also be provided for port""".stripMargin.replaceAll("\n", " ")
         )
     }
@@ -75,9 +77,7 @@ class SparkLogClient(hadoopConfiguration: Configuration, sparkConf: SparkConf) {
   def fetchData(appId: String, attemptId: Option[String])(implicit ec: ExecutionContext): Future[SparkLogDerivedData] = {
     val logPath = getLogPath(webhdfsEventLogUri, appId, attemptId, compressionCodecShortName)
     logger.info(s"looking for logs at ${logPath}")
-
     val codec = compressionCodecForLogPath(sparkConf, logPath)
-
     // Limit scope of async.
     async {
       resource.managed { openEventLog(sparkConf, logPath, fs) }
@@ -185,7 +185,6 @@ object SparkLogClient {
     if (!fs.exists(logPath)) {
       throw new FileNotFoundException(s"File ${logPath} does not exist.")
     }
-
     new BufferedInputStream(fs.open(logPath))
   }
 

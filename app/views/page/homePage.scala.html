@@ -14,7 +14,11 @@
 * the License.
 *@
 
-@(numJobsAnalyzed: Int, numJobsSevere: Int, numJobsCritical: Int)(results: Html)
+@(numJobsAnalyzed: Int, numJobsSevere: Int, numJobsCritical: Int, numJobExceptions: Int, rightNow: String,
+numHadoopJava: Int, numSpark: Int, numHive: Int, numKafka: Int,
+numJobsSevereHadoopJava: Int, numJobsSevereSpark: Int, numJobsSevereHive: Int, numJobsSevereKafka: Int,
+numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: Int, numJobsCriticalKafka: Int
+)(results: Html)(exceptions: Html)
 
 @*
 * The layout of the homepage of Dr. Elephant or the dashboard
@@ -26,12 +30,47 @@
 *@
 
 @main("Dr. Elephant", "dashboard") {
-  <div class="jumbotron">
-    <h2>Hello there, I've been busy!</h2>
-    <p>I looked through <b>@numJobsAnalyzed</b> jobs today.<br>
-      About <b>@numJobsSevere</b> of them could use some tuning.<br>
-      About <b>@numJobsCritical</b> of them need some serious attention!
+<div class="jumbotron">
+    <h2>As Of <b>@rightNow</b>:</h2>
+    <p><b>@numJobsAnalyzed</b> jobs ran on this cluster in the last 24h (@numHadoopJava HadoopJava, @numSpark Spark, @numHive Hive, @numKafka Kafka)<br>
+        @if(numJobsSevere==0) {
+        None of them need tuning.<br>
+        } else {
+            <b>@numJobsSevere</b> of them could use some tuning (
+            @if(numJobsSevereHadoopJava>0){@numJobsSevereHadoopJava HadoopJava}
+            @if(numJobsSevereSpark>0){@if(numJobsSevereHadoopJava>0){, }@numJobsSevereSpark Spark}
+            @if(numJobsSevereHive>0){@if(numJobsSevereHadoopJava+numJobsSevereSpark>0){, }@numJobsSevereHive Hive}
+            @if(numJobsSevereKafka>0){@if(numJobsSevereHadoopJava+numJobsSevereSpark+numJobsSevereHive>0){, }@numJobsSevereKafka Hive}
+            )<br>
+        }
+        @if(numJobsCritical==0) {
+        None of them need immediate attention due to critical errors.<br>
+        } else {
+            <b>@numJobsCritical</b> of them threw critical errors and need attention (
+            @if(numJobsCriticalHadoopJava>0){@numJobsCriticalHadoopJava HadoopJava}
+            @if(numJobsCriticalSpark>0){@if(numJobsCriticalHadoopJava>0){, }@numJobsCriticalSpark Spark}
+            @if(numJobsCriticalHive>0){@if(numJobsCriticalHadoopJava+numJobsCriticalSpark>0){, }@numJobsCriticalHive Hive}
+            @if(numJobsCriticalKafka>0){@if(numJobsCriticalHadoopJava+numJobsCriticalSpark+numJobsCriticalHive>0){, }@numJobsCriticalKafka Kafka}
+            )<br>
+        }
+        @if(numJobExceptions==0) {
+        No exceptions occurred.<br>
+        }
+        Use the Search page above for more detailed reporting.<br>
     </p>
-  </div>
-  @results
+</div>
+@if(numJobExceptions==0) {
+@results
+} else {
+<table border="1">
+    <tr width="100%" valign="top">
+        <td width="50%">
+            @results
+        </td>
+        <td width="50%" valign="top">
+            @exceptions
+        </td>
+    </tr>
+</table>
+}
 }

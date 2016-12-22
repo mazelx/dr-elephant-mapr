@@ -23,6 +23,10 @@ import com.avaje.ebean.annotation.EnumValue;
  * The severities that you can use
  */
 public enum Severity {
+
+  @EnumValue("5")
+  EXCEPTION(5, "Exception", "warning"),
+
   @EnumValue("4")
   CRITICAL(4, "Critical", "danger"),
 

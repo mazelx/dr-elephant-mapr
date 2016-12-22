@@ -27,6 +27,8 @@ import play.test.Helpers;
 import views.html.page.homePage;
 import views.html.results.searchResults;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,12 +40,17 @@ public class ApplicationTest {
 
   @Test
   public void testRenderHomePage() {
-    Content html = homePage.render(5, 2, 3, searchResults.render("Latest analysis", null));
+    String rightNow = new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(new Date());
+
+    Content html = homePage.render(5, 2, 3, 0, rightNow, 0,0,0,0,0,0,0,0,0,0,0,0,
+              searchResults.render("Last 50 No status/Low/Moderate In Past 24Hr", null),
+              searchResults.render("Last 7 Days Exceptions/Severe/Critical", null));
     assertEquals("text/html", html.contentType());
-    assertTrue(html.body().contains("Hello there, I've been busy!"));
-    assertTrue(html.body().contains("I looked through <b>5</b> jobs today."));
-    assertTrue(html.body().contains("About <b>2</b> of them could use some tuning."));
-    assertTrue(html.body().contains("About <b>3</b> of them need some serious attention!"));
+    assertTrue(html.body().contains("As Of <b>"+rightNow+"</b>:"));
+    assertTrue(html.body().contains("<b>5</b> jobs ran on this cluster in the last 24h"));
+    assertTrue(html.body().contains("<b>2</b> of them could use some tuning"));
+    assertTrue(html.body().contains("<b>3</b> of them threw critical errors and need attention"));
+    assertTrue(html.body().contains("No exceptions occurred."));
   }
 
   @Test

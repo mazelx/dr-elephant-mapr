@@ -51,9 +51,15 @@ class SparkRestClient(sparkConf: SparkConf) {
 
   private val historyServerUri: URI = sparkConf.getOption(HISTORY_SERVER_ADDRESS_KEY) match {
     case Some(historyServerAddress) =>
-      val baseUri = new URI(s"http://${historyServerAddress}")
-      require(baseUri.getPath == "")
-      baseUri
+      if (historyServerAddress.slice(0,4) == s"http") {
+        val baseUri = new URI(s"${historyServerAddress}")
+        require(baseUri.getPath == "")
+        baseUri
+      } else {
+        val baseUri = new URI(s"http://${historyServerAddress}")
+        require(baseUri.getPath == "")
+        baseUri
+      }
     case None =>
       throw new IllegalArgumentException("spark.yarn.historyServer.address not provided; can't use Spark REST API")
   }
@@ -68,13 +74,21 @@ class SparkRestClient(sparkConf: SparkConf) {
 
     // Limit scope of async.
     async {
-      val lastAttemptId = applicationInfo.attempts.maxBy { _.startTime }.attemptId
+      val lastAttemptId = applicationInfo.attempts.maxBy {
+        _.startTime
+      }.attemptId
       lastAttemptId match {
         case Some(attemptId) => {
           val attemptTarget = appTarget.path(attemptId)
-          val futureJobDatas = async { getJobDatas(attemptTarget) }
-          val futureStageDatas = async { getStageDatas(attemptTarget) }
-          val futureExecutorSummaries = async { getExecutorSummaries(attemptTarget) }
+          val futureJobDatas = async {
+            getJobDatas(attemptTarget)
+          }
+          val futureStageDatas = async {
+            getStageDatas(attemptTarget)
+          }
+          val futureExecutorSummaries = async {
+            getExecutorSummaries(attemptTarget)
+          }
           SparkRestDerivedData(
             applicationInfo,
             await(futureJobDatas),
@@ -82,7 +96,17 @@ class SparkRestClient(sparkConf: SparkConf) {
             await(futureExecutorSummaries)
           )
         }
-        case None => throw new IllegalArgumentException("Spark REST API has no attempt information")
+        // case None => throw new IllegalArgumentException("Spark REST API has no attempt information")
+        case None => {
+          logger.info(s"Application was initiated from yarn-client, so no attempt information exists")
+          SparkRestDerivedData(
+            applicationInfo,
+            null,
+            null,
+            null
+          )
+
+        }
       }
     }
   }
@@ -92,7 +116,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(appTarget, SparkRestObjectMapper.readValue[ApplicationInfo])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ${appTarget.getUri}", e)
+        logger.error(s"error reading ApplicationInfo from ${appTarget.getUri}", e)
         throw e
       }
     }
@@ -104,7 +128,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(target, SparkRestObjectMapper.readValue[Seq[JobData]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ${target.getUri}", e)
+        logger.error(s"error reading JobData from ${target.getUri}", e)
         throw e
       }
     }
@@ -116,7 +140,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(target, SparkRestObjectMapper.readValue[Seq[StageData]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ${target.getUri}", e)
+        logger.error(s"error reading StageData from ${target.getUri}", e)
         throw e
       }
     }
@@ -128,7 +152,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(target, SparkRestObjectMapper.readValue[Seq[ExecutorSummary]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ${target.getUri}", e)
+        logger.error(s"error reading ExecutorSummaries from ${target.getUri}", e)
         throw e
       }
     }
