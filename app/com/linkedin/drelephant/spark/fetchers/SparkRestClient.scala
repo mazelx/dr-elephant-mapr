@@ -23,7 +23,6 @@ import java.util.{Calendar, SimpleTimeZone}
 import scala.async.Async
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
-
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -31,6 +30,9 @@ import com.linkedin.drelephant.spark.data.SparkRestDerivedData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary, JobData, StageData}
 import javax.ws.rs.client.{Client, ClientBuilder, WebTarget}
 import javax.ws.rs.core.MediaType
+import javax.ws.rs.NotFoundException
+
+import com.cardlytics.drelephant.exceptions.{NoYarnClientAttemptInfoExistsException, MissingYarnHistoryServerInfoException}
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 
@@ -42,6 +44,7 @@ import org.apache.spark.SparkConf
   * or synchronous when needed.
   */
 class SparkRestClient(sparkConf: SparkConf) {
+
   import SparkRestClient._
   import Async.{async, await}
 
@@ -51,7 +54,7 @@ class SparkRestClient(sparkConf: SparkConf) {
 
   private val historyServerUri: URI = sparkConf.getOption(HISTORY_SERVER_ADDRESS_KEY) match {
     case Some(historyServerAddress) =>
-      if (historyServerAddress.slice(0,4) == s"http") {
+      if (historyServerAddress.slice(0, 4) == s"http") {
         val baseUri = new URI(s"${historyServerAddress}")
         require(baseUri.getPath == "")
         baseUri
@@ -69,54 +72,50 @@ class SparkRestClient(sparkConf: SparkConf) {
   def fetchData(appId: String)(implicit ec: ExecutionContext): Future[SparkRestDerivedData] = {
     val appTarget = apiTarget.path(s"applications/${appId}")
     logger.info(s"calling REST API at ${appTarget.getUri}")
-
-    val applicationInfo = getApplicationInfo(appTarget)
-
-    // Limit scope of async.
-    async {
-      val lastAttemptId = applicationInfo.attempts.maxBy {
-        _.startTime
-      }.attemptId
-      lastAttemptId match {
-        case Some(attemptId) => {
-          val attemptTarget = appTarget.path(attemptId)
-          val futureJobDatas = async {
-            getJobDatas(attemptTarget)
+    try {
+      val applicationInfo = getApplicationInfo(appTarget)
+      // Limit scope of async.
+      async {
+        val lastAttemptId = applicationInfo.attempts.maxBy {
+          _.startTime
+        }.attemptId
+        lastAttemptId match {
+          case Some(attemptId) => {
+            val attemptTarget = appTarget.path(attemptId)
+            val futureJobDatas = async {
+              getJobDatas(attemptTarget)
+            }
+            val futureStageDatas = async {
+              getStageDatas(attemptTarget)
+            }
+            val futureExecutorSummaries = async {
+              getExecutorSummaries(attemptTarget)
+            }
+            SparkRestDerivedData(
+              applicationInfo,
+              await(futureJobDatas),
+              await(futureStageDatas),
+              await(futureExecutorSummaries)
+            )
           }
-          val futureStageDatas = async {
-            getStageDatas(attemptTarget)
+          case None => {
+            throw new NoYarnClientAttemptInfoExistsException(s"${appId} was initiated from yarn-client, so no attempt information exists. Skipping job.")
           }
-          val futureExecutorSummaries = async {
-            getExecutorSummaries(attemptTarget)
-          }
-          SparkRestDerivedData(
-            applicationInfo,
-            await(futureJobDatas),
-            await(futureStageDatas),
-            await(futureExecutorSummaries)
-          )
-        }
-        // case None => throw new IllegalArgumentException("Spark REST API has no attempt information")
-        case None => {
-          logger.info(s"Application was initiated from yarn-client, so no attempt information exists")
-          SparkRestDerivedData(
-            applicationInfo,
-            null,
-            null,
-            null
-          )
-
         }
       }
+    } catch {
+      case e: javax.ws.rs.NotFoundException => throw new MissingYarnHistoryServerInfoException(s"${appId} has aged out of the YARN History Server. Skipping job.")
+      case NonFatal(e) => throw e
     }
   }
 
+
   private def getApplicationInfo(appTarget: WebTarget): ApplicationInfo = {
     try {
-      get(appTarget, SparkRestObjectMapper.readValue[ApplicationInfo])
+       get(appTarget, SparkRestObjectMapper.readValue[ApplicationInfo])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ApplicationInfo from ${appTarget.getUri}", e)
+        logger.error(s"error reading ${appTarget.getUri}", e)
         throw e
       }
     }
@@ -128,7 +127,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(target, SparkRestObjectMapper.readValue[Seq[JobData]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading JobData from ${target.getUri}", e)
+        logger.error(s"error reading JobData for ${target.getUri}, skipping data")
         throw e
       }
     }
@@ -140,7 +139,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(target, SparkRestObjectMapper.readValue[Seq[StageData]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading StageData from ${target.getUri}", e)
+        logger.error(s"error reading StageData for ${target.getUri}, skipping data")
         throw e
       }
     }
@@ -152,7 +151,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(target, SparkRestObjectMapper.readValue[Seq[ExecutorSummary]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ExecutorSummaries from ${target.getUri}", e)
+        logger.error(s"error reading ExecutorSummaries for ${target.getUri}, skipping data")
         throw e
       }
     }

@@ -87,15 +87,14 @@ object SparkFetcher {
   )(
     implicit ec: ExecutionContext
   ): Future[SparkApplicationData] = async {
-    val restDerivedData = await(sparkRestClient.fetchData(appId))
-    val lastAttemptId = restDerivedData.applicationInfo.attempts.maxBy { _.startTime }.attemptId
 
+    val restDerivedData = await(sparkRestClient.fetchData(appId))
+    val lastAttemptId:Option[String] = restDerivedData.applicationInfo.attempts.maxBy { _.startTime }.attemptId
     // Would use .map but await doesn't like that construction.
     val logDerivedData = sparkLogClient match {
       case Some(sparkLogClient) => Some(await(sparkLogClient.fetchData(appId, lastAttemptId)))
       case None => None
     }
-
     SparkApplicationData(appId, restDerivedData, logDerivedData)
   }
 }

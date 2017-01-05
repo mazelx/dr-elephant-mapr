@@ -57,6 +57,10 @@
   color: #D9534F !important;
 }
 
+.severity-Exception {
+  color: #D9534F !important;
+}
+
 .severity-Moderate {
   color: #F0AD4E !important;
 }

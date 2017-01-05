@@ -18,6 +18,7 @@ package controllers;
 
 import com.avaje.ebean.Query;
 import models.AppResult;
+import com.cardlytics.drelephant.aggregates.UserSeverityAggregate;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -26,10 +27,12 @@ import play.test.FakeApplication;
 import play.test.Helpers;
 import views.html.page.homePage;
 import views.html.results.searchResults;
+import views.html.results.userSeverityAggregateResults;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -37,14 +40,20 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class ApplicationTest {
+  private static final long DAY = 24 * 60 * 60 * 1000;
 
   @Test
   public void testRenderHomePage() {
     String rightNow = new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(new Date());
-
+    int topN = 5;
+    Long now = System.currentTimeMillis();
+    Long sevenDaysAgo = now - (7 * DAY);
+    List<UserSeverityAggregate> usaResults = Application.getUserSeverityAggregate(now, sevenDaysAgo, 3, 5, "!TEST!", topN);
     Content html = homePage.render(5, 2, 3, 0, rightNow, 0,0,0,0,0,0,0,0,0,0,0,0,
               searchResults.render("Last 50 No status/Low/Moderate In Past 24Hr", null),
-              searchResults.render("Last 7 Days Exceptions/Severe/Critical", null));
+              searchResults.render("Last 7 Days Exceptions/Severe/Critical", null),
+              userSeverityAggregateResults.render(topN, usaResults)
+    );
     assertEquals("text/html", html.contentType());
     assertTrue(html.body().contains("As Of <b>"+rightNow+"</b>:"));
     assertTrue(html.body().contains("<b>5</b> jobs ran on this cluster in the last 24h"));

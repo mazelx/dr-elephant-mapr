@@ -256,7 +256,6 @@ public class AnalyticJob {
       }
     }
 
-
     HadoopMetricsAggregator hadoopMetricsAggregator = ElephantContext.instance().getAggregatorForApplicationType(getAppType());
     hadoopMetricsAggregator.aggregate(data);
     HadoopAggregatedData hadoopAggregatedData = hadoopMetricsAggregator.getResult();

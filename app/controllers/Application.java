@@ -41,6 +41,7 @@ import java.util.TreeSet;
 
 import models.AppHeuristicResult;
 import models.AppResult;
+import com.cardlytics.drelephant.aggregates.UserSeverityAggregate;
 
 import org.apache.commons.collections.OrderedMap;
 import org.apache.commons.collections.map.ListOrderedMap;
@@ -72,6 +73,7 @@ import views.html.results.oldJobHistoryResults;
 import views.html.results.oldFlowMetricsHistoryResults;
 import views.html.results.oldJobMetricsHistoryResults;
 import views.html.results.searchResults;
+import views.html.results.userSeverityAggregateResults;
 
 import views.html.page.oldFlowHistoryPage;
 import views.html.page.oldJobHistoryPage;
@@ -155,115 +157,153 @@ public class Application extends Controller {
    * Displays the latest jobs which were analysed in the last 24 hours.
    */
   public static Result dashboard() {
+
+    logger.info("BEGIN dashboard render");
+
     long now = System.currentTimeMillis();
-    long finishDate = now - DAY;
-    long sevenDaysAgo = now - (6 * DAY) - 1;
+    long last24Hours = now - DAY;
+    long fifteenDaysAgo = now - (15 * DAY);
 
     // Update statistics only after FETCH_DELAY
+    
     if (now - _lastFetch > FETCH_DELAY) {
-      _numJobsAnalyzed = AppResult.find.where().gt(AppResult.TABLE.FINISH_TIME, finishDate).findRowCount();
+      _numJobsAnalyzed = AppResult.find.where().gt(AppResult.TABLE.FINISH_TIME,last24Hours).findRowCount();
       _numHadoopJava = AppResult.find.where()
               .eq(AppResult.TABLE.JOB_TYPE, "HadoopJava")
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate).findRowCount();
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours).findRowCount();
       _numSpark = AppResult.find.where()
               .eq(AppResult.TABLE.JOB_TYPE, "Spark")
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate).findRowCount();
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours).findRowCount();
       _numHive = AppResult.find.where()
               .eq(AppResult.TABLE.JOB_TYPE, "Hive")
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate).findRowCount();
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours).findRowCount();
       _numKafka = AppResult.find.where()
               .eq(AppResult.TABLE.JOB_TYPE, "Kafka")
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate).findRowCount();
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours).findRowCount();
       _numJobsCritical = AppResult.find.where()
-          .gt(AppResult.TABLE.FINISH_TIME, finishDate)
-          .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
-          .findRowCount();
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
+              .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
+              .findRowCount();
       _numJobsCriticalHadoopJava = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "HadoopJava")
               .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
               .findRowCount();
       _numJobsCriticalSpark = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "Spark")
               .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
               .findRowCount();
       _numJobsCriticalHive = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "Hive")
               .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
               .findRowCount();
       _numJobsCriticalKafka = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "Kafka")
               .eq(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
               .findRowCount();
       _numJobsSevereHadoopJava = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "HadoopJava")
               .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
               .findRowCount();
       _numJobsSevere = AppResult.find.where()
-          .gt(AppResult.TABLE.FINISH_TIME, finishDate)
-          .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
-          .findRowCount();
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
+              .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
+              .findRowCount();
       _numJobsSevereSpark = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "Spark")
               .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
               .findRowCount();
       _numJobsSevereHive = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "Hive")
               .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
               .findRowCount();
       _numJobsSevereKafka = AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
+              .gt(AppResult.TABLE.FINISH_TIME,last24Hours)
               .eq(AppResult.TABLE.JOB_TYPE, "Kafka")
               .eq(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
               .findRowCount();
-      _numJobExceptions =  _numJobsCritical + _numJobsSevere + AppResult.find.where()
-              .gt(AppResult.TABLE.FINISH_TIME, finishDate)
-              .eq(AppResult.TABLE.JOB_TYPE, "HadoopJava")
-              .eq(AppResult.TABLE.SEVERITY, Severity.EXCEPTION.getValue())
-              .findRowCount();
+      _numJobExceptions =  _numJobsCritical + _numJobsSevere;
       _lastFetch = now;
       _rightNow = new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(new Date());
     }
 
-    // Fetch only required fields for jobs analysed in the last 24 hours up to a max of 50 jobs
     List<AppResult> low = AppResult.find.select(AppResult.getSearchFields())
-        .where()
-        .gt(AppResult.TABLE.FINISH_TIME, finishDate)
-            .ne(AppResult.TABLE.SEVERITY, Severity.EXCEPTION.getValue())
+            .where()
+            .gt(AppResult.TABLE.FINISH_TIME,fifteenDaysAgo)
             .ne(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
             .ne(AppResult.TABLE.SEVERITY, Severity.SEVERE.getValue())
-        .order()
-        .desc(AppResult.TABLE.FINISH_TIME)
-        .setMaxRows(50)
-		.fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
-        .findList();
+            .order()
+            .desc(AppResult.TABLE.FINISH_TIME)
+            .setMaxRows(50)
+            .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
+            .findList();
 
     // Fetch only required fields for jobs WITH EXCEPTIONS analysed in the last 24 hours up to a max of 50 jobs
     List<AppResult> high = AppResult.find.select(AppResult.getSearchFields())
             .where()
-            .gt(AppResult.TABLE.FINISH_TIME, sevenDaysAgo)
+            .gt(AppResult.TABLE.FINISH_TIME, fifteenDaysAgo)
             .ne(AppResult.TABLE.SEVERITY, Severity.NONE.getValue())
             .ne(AppResult.TABLE.SEVERITY, Severity.LOW.getValue())
             .ne(AppResult.TABLE.SEVERITY, Severity.MODERATE.getValue())
-        .order()
-        .desc(AppResult.TABLE.FINISH_TIME)
-        .setMaxRows(50)
-        .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
-        .findList();
+            .order()
+            .desc(AppResult.TABLE.FINISH_TIME)
+            .setMaxRows(50)
+            .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
+            .findList();
 
-    return ok(homePage.render(_numJobsAnalyzed, _numJobsSevere, _numJobsCritical, _numJobExceptions,  _rightNow,
+    // move MR Exceptions from low list to high list
+    List<AppResult> exceptions = new ArrayList<>();
+    String id;
+    for(AppResult ar: low) {
+      id = "";
+      if (ar.jobType.equalsIgnoreCase("HadoopJava")) {
+        for (AppHeuristicResult ahr: ar.yarnAppHeuristicResults) {
+          if (ahr.heuristicName.equalsIgnoreCase("EXCEPTION")) {
+            id = ar.id;
+            _numJobExceptions =  _numJobExceptions + 1;
+            break;
+          }
+        }
+        if (! id.isEmpty()) {
+          exceptions.add(ar);
+        }
+      }
+    }
+    if (exceptions.size() > 0) {
+      for(AppResult ar: exceptions) {
+        low.remove(ar);
+      }
+      high.addAll(0, exceptions);
+    }
+
+    String lowtitle = "Last 50Jobs/15Days w/Low/Moderate Status";
+    String hightitle = "Last 50Jobs/15Days w/Exceptions/Severe/Critical Status";
+    if (low.size() == 0 && high.size() == 0) {
+      lowtitle = "Starting up, data loading; one moment please.";
+      hightitle = lowtitle;
+    }
+
+    int topN = 5;
+    List<UserSeverityAggregate> usaResults = getUserSeverityAggregate(now, fifteenDaysAgo, 3, 5, "!TEST!", topN);
+
+    Result results = ok(homePage.render(_numJobsAnalyzed, _numJobsSevere, _numJobsCritical, _numJobExceptions,  _rightNow,
             _numHadoopJava, _numSpark, _numHive, _numKafka,
             _numJobsSevereHadoopJava, _numJobsSevereSpark, _numJobsSevereHive, _numJobsSevereKafka,
             _numJobsCriticalHadoopJava, _numJobsCriticalSpark, _numJobsCriticalHive, _numJobsCriticalKafka,
-        searchResults.render("Last 50 No status/Low/Moderate In Past 24Hr", low),
-            searchResults.render("Last 7 Days Exceptions/Severe/Critical", high)
-            ));
+            searchResults.render(lowtitle, low),
+            searchResults.render(hightitle, high),
+            userSeverityAggregateResults.render(topN, usaResults)
+    ));
+
+    logger.info("END dashboard render");
+
+    return results;
   }
 
   /**
@@ -1660,156 +1700,134 @@ public class Application extends Controller {
   }
 
   /**
-   private static class UserSeverityAggregate {
+   *
+   *   Generate list of users by highest number of exception/critical/severe errors in last 7 days in descending error count order
+   *
+   */
 
-   private String _username;
-   private int _severity;
-   private int _count;
-   private long _sortidx;
+  private static class UserSeverityAggregateSorter implements Comparator<UserSeverityAggregate> {
+    public int compare(UserSeverityAggregate usa1, UserSeverityAggregate usa2) {
+      return usa1.getSortIndex() < usa2.getSortIndex()?-1:1;
+    }
+  }
 
-   private long encode(String input) {
-   String rtn = "";
-   String first5 = input.toLowerCase().concat("      ").substring(0,2);
-   int ascii;
-   for (int i = 0; i < 5 ; ++i) {
-   ascii = (int)first5.charAt(i);
-   rtn = rtn.concat(String.valueOf(ascii));
-   }
-   return Long.parseLong(rtn);
-   }
+  public static List<UserSeverityAggregate> getUserSeverityAggregate(Long startTime, Long endTime, int startSeverity, int endSeverity, String userName, int topN) {
+    List<UserSeverityAggregate> uniqueAlertables = new ArrayList<>();
+    //JsonArray output = new JsonArray();
+    Long now = System.currentTimeMillis();
+    Long fifteenDaysAgo = now - (7 * DAY);
+    Long sixMonthAgo = now - (180 * DAY);
+    if (startTime == 0) {
+      startTime = fifteenDaysAgo;
+    }
+    if (endTime == 0) {
+      endTime = now;
+    }
+    if (startTime >= endTime || startTime < sixMonthAgo || startTime > now || endTime < sixMonthAgo || endTime > now) {
+      return uniqueAlertables;
+    }
+    boolean ssFound = false;
+    boolean esFound = false;
+    if (startSeverity == 0) {
+      startSeverity = Severity.SEVERE.getValue();
+    }
+    if (endSeverity == 0) {
+      endSeverity = Severity.CRITICAL.getValue();
+    }
+    if (startSeverity > endSeverity) {
+      return uniqueAlertables;
+    }
+    for (Severity s : Severity.values()) {
+      if ( ! ssFound && s.getValue() == startSeverity) {
+        ssFound = true;
+      }
+      if (! esFound && s.getValue() == endSeverity) {
+        esFound = true;
+      }
+      if (ssFound && esFound) {
+        break;
+      }
+    }
+    if (! (ssFound && esFound)) {
+      return uniqueAlertables;
+    }
+    if (topN <= 0) {
+      topN = 5;
+    }
+    // get AppResult list of users with errors
+    List<AppResult> alertables;
+    if (userName.isEmpty()) {
+      alertables = AppResult.find.select(AppResult.getSearchFields())
+              .where()
+              .ge(AppResult.TABLE.START_TIME, startTime)
+              .le(AppResult.TABLE.FINISH_TIME, endTime)
+              .ge(AppResult.TABLE.SEVERITY, startSeverity)
+              .le(AppResult.TABLE.SEVERITY, endSeverity)
+              .findList();
+    } else if (userName != "!TEST!") {
+      alertables = AppResult.find.select(AppResult.getSearchFields())
+              .where()
+              .ge(AppResult.TABLE.START_TIME, startTime)
+              .le(AppResult.TABLE.FINISH_TIME, endTime)
+              .ge(AppResult.TABLE.SEVERITY, startSeverity)
+              .le(AppResult.TABLE.SEVERITY, endSeverity)
+              .contains(AppResult.TABLE.USERNAME, userName)
+              .findList();
+    } else {
+        alertables = new ArrayList<>(6);
+        AppResult test = new AppResult();
+        test.username = "testuser1";
+        test.severity = Severity.CRITICAL;
+        alertables.add(test);
+        alertables.add(test);
+        alertables.add(test);
+        test.username = "testuser2";
+        test.severity = Severity.CRITICAL;
+        alertables.add(test);
+        alertables.add(test);
+        test.username = "testuser1";
+        test.severity = Severity.SEVERE;
+        alertables.add(test);
+    }
+    // create aggregate of error counts by username by severity
+    int p = 0;
+    int s;
+    boolean found;
+    int maxsize = alertables.size();
+    if (maxsize > 0) {
+      for (AppResult row : alertables) {
+        found = false;
+        s = uniqueAlertables.size();
+        for (int i = 0; i < s ; i++) {
+          if (uniqueAlertables.get(i).getUsername().equals(row.username) && uniqueAlertables.get(i).getSeverity().getValue() == row.severity.getValue()) {
+            found = true;
+            p = i;
+            break;
+          }
+        }
+        if (!found) {
+          UserSeverityAggregate usa = new UserSeverityAggregate();
+          usa.set(row.username, row.severity, 1);
+          uniqueAlertables.add(usa);
+        } else {
+          UserSeverityAggregate usa = new UserSeverityAggregate();
+          usa.set(uniqueAlertables.get(p).getUsername(), uniqueAlertables.get(p).getSeverity(), uniqueAlertables.get(p).getCount() + 1);
+          uniqueAlertables.set(p, usa);
+        }
+      }
+    }
+    // sort aggregate error list by count by user by severity
+    Collections.sort(uniqueAlertables, new UserSeverityAggregateSorter());
+    // keep only top N
+    s = uniqueAlertables.size() - 1;
+    for (int i = s; i >= 0; i--) {
+      if (i < topN) {
+        break;
+      }
+      uniqueAlertables.remove(i);
+    }
+    return uniqueAlertables;
+  }
 
-   public String getUsername() {
-   return this._username;
-   }
-   public int getSeverity() {
-   return this._severity;
-   }
-   public int getCount() {
-   return this._count;
-   }
-
-   public void set(String username, int severity, int count) {
-   this._username = username;
-   this._severity = severity;
-   this._count = count;
-   this._sortidx = (100000 + this._count) + this.encode(this._username) + this._severity;
-   }
-
-   }
-
-   private static class UserSeverityAggregateComparator implements Comparator<UserSeverityAggregate> {
-   public int compare(UserSeverityAggregate usa1, UserSeverityAggregate usa2) {
-   return (int)(usa1._sortidx - usa2._sortidx);
-   }
-   }
-
-   // Generate list of users by highest number of exception/critical/severe errors in last 7 days in descending error count order
-
-   private static Result getUsersWithErrors(String startTime, String endTime, int startSeverity, int endSeverity, String userName) {
-
-   JsonArray datasets = new JsonArray();
-   if (startTime.length() != endTime.length() ||
-   (startTime.length() != 10 && startTime.length() != 13)) {
-   return status(300);
-   }
-   SimpleDateFormat tf = null;
-   if (startTime.length() == 10) {
-   tf = new SimpleDateFormat("yyyy-MM-dd");
-   } else {
-   tf = new SimpleDateFormat("yyyy-MM-dd-HH");
-   }
-   Date start = tf.parse(startTime);
-   Date end = tf.parse(endTime);
-
-   boolean ssFound = false;
-   boolean esFound = false;
-   String startSeverityText;
-   String endSeverityText;
-   for (Severity s : Severity.values()) {
-   if (s.getValue().equals(startSeverity)) {
-   ssFound = true;
-   startSeverityText = s.getText();
-   }
-   if (s.getValue().equals(endSeverity)) {
-   esFound = true;
-   endSeverityText = s.getText();
-   }
-   if (ssFound && esFound) {
-   break;
-   }
-   }
-   if (! (ssFound && esFound)) {
-   return status(300);
-   }
-
-   if (userName.isEmpty()) {
-
-   List<UserSeverityAggregate> namesToAlert = AppResult.find.select(AppResult.TABLE.USERNAME, AppResult.TABLE.SEVERITY, "0")
-   .where()
-   .ge(AppResult.TABLE.START_TIME, startTime)
-   .le(AppResult.TABLE.FINISH_TIME, endTime)
-   .ge(AppResult.TABLE.SEVERITY, startSeverity)
-   .le(AppResult.TABLE.SEVERITY, endSeverity)
-   .findList();
-
-   } else {
-
-   List<UserSeverityAggregate> namesToAlert = AppResult.find.select(AppResult.TABLE.USERNAME, AppResult.TABLE.SEVERITY, "0")
-   .where()
-   .ge(AppResult.TABLE.START_TIME, startTime)
-   .le(AppResult.TABLE.FINISH_TIME, endTime)
-   .ge(AppResult.TABLE.SEVERITY, startSeverity)
-   .le(AppResult.TABLE.SEVERITY, endSeverity)
-   .contains(AppResult.TABLE.USERNAME, userName)
-   .findList();
-   }
-
-   //  List<UserSeverityAggregate> sortedUniqueNamesToAlert = new ArrayList<>();
-   int k;
-   boolean found;
-   int maxsize = namesToAlert.size();
-   if (maxsize > 0) {
-   List<UserSeverityAggregate> uniqueNamesToAlert = new ArrayList<>();
-   UserSeverityAggregate first = new UserSeverityAggregate(namesToAlert.get(0).getUsername(), namesToAlert.get(0).getSeverity(), 0);
-   uniqueNamesToAlert.add(first);
-   for (int i = 1; i <= maxsize; ++i) {
-   k = -1;
-   found = false;
-   for (int j = 0; j < i; ++j) {
-   if (namesToAlert.get(i).getUsername().equals(namesToAlert.get(j).getUsername()) && namesToAlert.get(i).getSeverity().equals(namesToAlert.get(j).getSeverity())) {
-   found = true;
-   k = j;
-   break;
-   }
-   }
-   if (found) {
-   UserSeverityAggregate usa = new UserSeverityAggregate(uniqueNamesToAlert.get(k).getUsername(), uniqueNamesToAlert.get(k).getSeverity(), uniqueNamesToAlert.get(k).getCount()+1);
-   uniqueNamesToAlert.set(k, usa);
-   } else {
-   UserSeverityAggregate usa = new UserSeverityAggregate(namesToAlert.get(i).getUsername(), namesToAlert.get(i).getSeverity(), 1);
-   uniqueNamesToAlert.add(usa);
-   }
-   }
-   List<UserSeverityAggregate> sortedUniqueNamesToAlert = Collections.sort(uniqueNamesToAlert, new UserSeverityAggregateComparator());
-
-   }
-   long asof;
-   String user;
-   long severity;
-   String description;
-   long count;
-   JsonObject dataset = new JsonObject();
-   dataset.addProperty("username", totalFlowMemoryUsed);
-   dataset.addProperty("starttime", startTime);
-   dataset.addProperty("endtime", endTime);
-   dataset.addProperty("severity", severity);
-   dataset.addProperty("description", totalFlowDelay);
-   dataset.addProperty("count", totalFlowMemoryUsed);
-
-
-   return ok(new Gson().toJson(datasets));
-
-   }
-   **/
 
 }

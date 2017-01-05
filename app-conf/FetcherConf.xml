@@ -36,29 +36,29 @@
       <sampling_enabled>false</sampling_enabled>
     </params>
   </fetcher>
-  <!--
-    This is an experimental replacement for the MapReduceFetcherHadoop2 that attempts to burn
-    through queues of jobs faster by pulling data directly from HDFS rather than going through
-    the job history server.
-
-    Increasing the param history_log_size_limit_in_mb allows this fetcher to accept larger log
-    files, but also increase the risk of OutOfMemory error. The default heap size of Dr. Elephant
-    is 1024MB. To increase this, e.g. to 2048MB, run this before start.sh:
-      export OPTS="-mem 2048"
-  -->
-  <!--
-  <fetcher>
-    <applicationtype>mapreduce</applicationtype>
-    <classname>com.linkedin.drelephant.mapreduce.fetchers.MapReduceFSFetcherHadoop2</classname>
+  <!-- <fetcher>
+    <applicationtype>spark</applicationtype>
+    <classname>com.linkedin.drelephant.spark.fetchers.SparkFSFetcher</classname>
     <params>
-      <sampling_enabled>false</sampling_enabled>
-      <history_log_size_limit_in_mb>500</history_log_size_limit_in_mb>
+       <event_log_size_limit_in_mb>500</event_log_size_limit_in_mb>
+       <event_log_dir>/mapr/mapr.cardlytics.com/apps/spark</event_log_dir>
+       <spark_log_ext></spark_log_ext>
     </params>
   </fetcher>
   -->
-
+  <!--
   <fetcher>
     <applicationtype>spark</applicationtype>
-    <classname>com.linkedin.drelephant.spark.fetchers.SparkFetcher</classname>
+    <classname>com.linkedin.drelephant.spark.fetchers.SparkiFSFetcher</classname>
+    <params>
+       <event_log_size_limit_in_mb>500</event_log_size_limit_in_mb>
+       <event_log_dir>/mapr/mapr.cardlytics.com/logs/mapr/yarn</event_log_dir>
+       <spark_log_ext></spark_log_ext>
+    </params>
+  </fetcher>
+  -->
+  <fetcher>
+     <applicationtype>spark</applicationtype>
+     <classname>com.linkedin.drelephant.spark.fetchers.SparkFetcher</classname>
   </fetcher>
 </fetchers>

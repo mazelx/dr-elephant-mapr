@@ -144,6 +144,8 @@ public enum Severity {
   /**
    * Returns the severity level of the value in the given thresholds
    * low < moderate < severe < critical
+   * *
+   * * BL CARDLYTICS EXCEPTION DELIBERATLY OMITTED
    *
    * Critical when value is greater than the critical threshold
    * None when the value is less than the low threshold.
@@ -171,6 +173,8 @@ public enum Severity {
   /**
    * Returns the severity level of the value in the given thresholds
    * low > moderate > severe > critical
+   * *
+   * * BL CARDLYTICS EXCEPTION DELIBERATLY OMITTED
    *
    * Critical when value is less than the critical threshold
    * None when the value is greater than the low threshold.

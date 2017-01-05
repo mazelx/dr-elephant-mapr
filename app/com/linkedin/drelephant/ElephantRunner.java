@@ -23,12 +23,15 @@ import com.linkedin.drelephant.analysis.AnalyticJobGenerator;
 import com.linkedin.drelephant.analysis.HDFSContext;
 import com.linkedin.drelephant.analysis.HadoopSystemContext;
 import com.linkedin.drelephant.analysis.AnalyticJobGeneratorHadoop2;
+import com.linkedin.drelephant.analysis.Severity;
 
 import com.linkedin.drelephant.security.HadoopSecurity;
+import com.linkedin.drelephant.spark.SparkMetricsAggregator;
 
 import controllers.MetricsController;
 import java.io.IOException;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -37,6 +40,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.linkedin.drelephant.util.Utils;
+import com.cardlytics.drelephant.exceptions.NoYarnClientAttemptInfoExistsException;
+import com.cardlytics.drelephant.exceptions.MissingYarnHistoryServerInfoException;
+import models.AppHeuristicResult;
 import models.AppResult;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -170,7 +176,11 @@ public class ElephantRunner implements Runnable {
 
     @Override
     public void run() {
+      boolean isYarnClientJob = false;
+      boolean hasAgedOutOfYarn = false;
       try {
+        isYarnClientJob = false;
+        hasAgedOutOfYarn = false;
         String analysisName = String.format("%s %s", _analyticJob.getAppType().getName(), _analyticJob.getAppId());
         long analysisStartTimeMillis = System.currentTimeMillis();
         logger.info(String.format("Analyzing %s", analysisName));
@@ -178,6 +188,7 @@ public class ElephantRunner implements Runnable {
         //result.save();
         try {
           AppResult result = _analyticJob.getAnalysis();
+          // bml Cardlytics bug fix for underflow error
           if (result.resourceUsed < 0) {
             result.resourceUsed = 0;
           }
@@ -206,18 +217,32 @@ public class ElephantRunner implements Runnable {
         logger.info(ExceptionUtils.getStackTrace(e));
 
         Thread.currentThread().interrupt();
+      } catch (NoYarnClientAttemptInfoExistsException e) {
+        isYarnClientJob = true;
+        //logger.error(e.getMessage());
+        if (_analyticJob != null) {
+          MetricsController.markSkippedJob();
+        }
+      } catch (MissingYarnHistoryServerInfoException e) {
+        hasAgedOutOfYarn = true;
+        //logger.error(e.getMessage());
+        if (_analyticJob != null) {
+          MetricsController.markSkippedJob();
+        }
       } catch (Exception e) {
-        logger.error(e.getMessage());
-        logger.error(ExceptionUtils.getStackTrace(e));
+        if (! isYarnClientJob && ! hasAgedOutOfYarn) {
+          logger.error(e.getMessage());
+          logger.error(ExceptionUtils.getStackTrace(e));
 
-        if (_analyticJob != null && _analyticJob.retry()) {
-          logger.error("Add analytic job id [" + _analyticJob.getAppId() + "] into the retry list.");
-          _analyticJobGenerator.addIntoRetries(_analyticJob);
-        } else {
-          if (_analyticJob != null) {
-            MetricsController.markSkippedJob();
-            logger.error("Drop the analytic job. Reason: reached the max retries for application id = ["
-                    + _analyticJob.getAppId() + "].");
+          if (_analyticJob != null && _analyticJob.retry()) {
+            logger.error("Add analytic job id [" + _analyticJob.getAppId() + "] into the retry list.");
+            _analyticJobGenerator.addIntoRetries(_analyticJob);
+          } else {
+            if (_analyticJob != null) {
+              MetricsController.markSkippedJob();
+              logger.error("Drop the analytic job. Reason: reached the max retries for application id = ["
+                      + _analyticJob.getAppId() + "].");
+            }
           }
         }
       }
