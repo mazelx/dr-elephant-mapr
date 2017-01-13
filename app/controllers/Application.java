@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+//import javax.servlet.http.HttpServletRequest;
 
 import models.AppHeuristicResult;
 import models.AppResult;
@@ -54,6 +55,7 @@ import play.data.Form;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
+import scala.Int;
 import views.html.help.metrics.helpRuntime;
 import views.html.help.metrics.helpWaittime;
 import views.html.help.metrics.helpUsedResources;
@@ -158,10 +160,12 @@ public class Application extends Controller {
    */
   public static Result dashboard() {
 
-    logger.info("BEGIN dashboard render");
+    String ip = getClientIpAddress();
+    logger.info("BEGIN dashboard render @"+ip);
 
     long now = System.currentTimeMillis();
     long last24Hours = now - DAY;
+    long last72Hours = now - (3 * DAY);
     long fifteenDaysAgo = now - (15 * DAY);
 
     // Update statistics only after FETCH_DELAY
@@ -233,7 +237,7 @@ public class Application extends Controller {
       _rightNow = new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(new Date());
     }
 
-    List<AppResult> low = AppResult.find.select(AppResult.getSearchFields())
+    List<AppResult> good = AppResult.find.select(AppResult.getSearchFields())
             .where()
             .gt(AppResult.TABLE.FINISH_TIME,fifteenDaysAgo)
             .ne(AppResult.TABLE.SEVERITY, Severity.CRITICAL.getValue())
@@ -245,7 +249,7 @@ public class Application extends Controller {
             .findList();
 
     // Fetch only required fields for jobs WITH EXCEPTIONS analysed in the last 24 hours up to a max of 50 jobs
-    List<AppResult> high = AppResult.find.select(AppResult.getSearchFields())
+    List<AppResult> bad = AppResult.find.select(AppResult.getSearchFields())
             .where()
             .gt(AppResult.TABLE.FINISH_TIME, fifteenDaysAgo)
             .ne(AppResult.TABLE.SEVERITY, Severity.NONE.getValue())
@@ -257,10 +261,10 @@ public class Application extends Controller {
             .fetch(AppResult.TABLE.APP_HEURISTIC_RESULTS, AppHeuristicResult.getSearchFields())
             .findList();
 
-    // move MR Exceptions from low list to high list
+    // move MR Exceptions from good list to bad list
     List<AppResult> exceptions = new ArrayList<>();
     String id;
-    for(AppResult ar: low) {
+    for(AppResult ar: good) {
       id = "";
       if (ar.jobType.equalsIgnoreCase("HadoopJava")) {
         for (AppHeuristicResult ahr: ar.yarnAppHeuristicResults) {
@@ -277,34 +281,38 @@ public class Application extends Controller {
     }
     if (exceptions.size() > 0) {
       for(AppResult ar: exceptions) {
-        low.remove(ar);
+        good.remove(ar);
       }
-      high.addAll(0, exceptions);
+      bad.addAll(exceptions);
+    }
+    if (good.size() == 0 && bad.size() == 0) {
+      _numJobsAnalyzed = -1;
     }
 
-    String lowtitle = "Last 50Jobs/15Days w/Low/Moderate Status";
-    String hightitle = "Last 50Jobs/15Days w/Exceptions/Severe/Critical Status";
-    if (low.size() == 0 && high.size() == 0) {
-      lowtitle = "Starting up, data loading; one moment please.";
-      hightitle = lowtitle;
-    }
 
+
+    String goodTitle = "Last 50Jobs/15Days w/Low/Moderate Status";
+    String badTitle = "Last 50Jobs/15Days w/Exceptions/Severe/Critical Status";
     int topN = 5;
-    List<UserSeverityAggregate> usaResults = getUserSeverityAggregate(now, fifteenDaysAgo, 3, 5, "!TEST!", topN);
+    String usaTitle = "Top Unique Offenders in Last 72Hr";
+
+    List<UserSeverityAggregate> usaResults = getUserSeverityAggregate(last72Hours, now, Severity.SEVERE.getValue(), Severity.CRITICAL.getValue(), null, topN);
+    int usaSize = usaResults.size();
 
     Result results = ok(homePage.render(_numJobsAnalyzed, _numJobsSevere, _numJobsCritical, _numJobExceptions,  _rightNow,
             _numHadoopJava, _numSpark, _numHive, _numKafka,
             _numJobsSevereHadoopJava, _numJobsSevereSpark, _numJobsSevereHive, _numJobsSevereKafka,
-            _numJobsCriticalHadoopJava, _numJobsCriticalSpark, _numJobsCriticalHive, _numJobsCriticalKafka,
-            searchResults.render(lowtitle, low),
-            searchResults.render(hightitle, high),
-            userSeverityAggregateResults.render(topN, usaResults)
+            _numJobsCriticalHadoopJava, _numJobsCriticalSpark, _numJobsCriticalHive, _numJobsCriticalKafka, usaSize, usaTitle,
+            searchResults.render(goodTitle, good),
+            searchResults.render(badTitle, bad),
+            userSeverityAggregateResults.render(usaTitle, usaResults)
     ));
 
-    logger.info("END dashboard render");
+    logger.info("END dashboard render @"+ip);
 
     return results;
   }
+
 
   /**
    * Returns the scheduler info id/url pair for the most recent app result that has an id like value
@@ -1705,9 +1713,9 @@ public class Application extends Controller {
    *
    */
 
-  private static class UserSeverityAggregateSorter implements Comparator<UserSeverityAggregate> {
+  private static class UserSeverityAggregateDescendingSorter implements Comparator<UserSeverityAggregate> {
     public int compare(UserSeverityAggregate usa1, UserSeverityAggregate usa2) {
-      return usa1.getSortIndex() < usa2.getSortIndex()?-1:1;
+      return usa1.getSortIndex() > usa2.getSortIndex()?-1:1;
     }
   }
 
@@ -1756,11 +1764,12 @@ public class Application extends Controller {
     }
     // get AppResult list of users with errors
     List<AppResult> alertables;
-    if (userName.isEmpty()) {
+    String usrName = userName == null ? "" : userName;
+    if (usrName.isEmpty()) {
       alertables = AppResult.find.select(AppResult.getSearchFields())
               .where()
               .ge(AppResult.TABLE.START_TIME, startTime)
-              .le(AppResult.TABLE.FINISH_TIME, endTime)
+              .lt(AppResult.TABLE.FINISH_TIME, endTime)
               .ge(AppResult.TABLE.SEVERITY, startSeverity)
               .le(AppResult.TABLE.SEVERITY, endSeverity)
               .findList();
@@ -1768,16 +1777,17 @@ public class Application extends Controller {
       alertables = AppResult.find.select(AppResult.getSearchFields())
               .where()
               .ge(AppResult.TABLE.START_TIME, startTime)
-              .le(AppResult.TABLE.FINISH_TIME, endTime)
+              .lt(AppResult.TABLE.FINISH_TIME, endTime)
               .ge(AppResult.TABLE.SEVERITY, startSeverity)
               .le(AppResult.TABLE.SEVERITY, endSeverity)
-              .contains(AppResult.TABLE.USERNAME, userName)
+              .contains(AppResult.TABLE.USERNAME, usrName)
               .findList();
     } else {
         alertables = new ArrayList<>(6);
         AppResult test = new AppResult();
         test.username = "testuser1";
         test.severity = Severity.CRITICAL;
+        test.startTime = now;
         alertables.add(test);
         alertables.add(test);
         alertables.add(test);
@@ -1792,11 +1802,10 @@ public class Application extends Controller {
     // create aggregate of error counts by username by severity
     int p = 0;
     int s;
-    boolean found;
     int maxsize = alertables.size();
     if (maxsize > 0) {
       for (AppResult row : alertables) {
-        found = false;
+        boolean found = false;
         s = uniqueAlertables.size();
         for (int i = 0; i < s ; i++) {
           if (uniqueAlertables.get(i).getUsername().equals(row.username) && uniqueAlertables.get(i).getSeverity().getValue() == row.severity.getValue()) {
@@ -1805,19 +1814,22 @@ public class Application extends Controller {
             break;
           }
         }
+        UserSeverityAggregate usa = new UserSeverityAggregate();
         if (!found) {
-          UserSeverityAggregate usa = new UserSeverityAggregate();
-          usa.set(row.username, row.severity, 1);
+          usa.set(row.username, row.severity, 1, row.startTime, row.finishTime);
           uniqueAlertables.add(usa);
         } else {
-          UserSeverityAggregate usa = new UserSeverityAggregate();
-          usa.set(uniqueAlertables.get(p).getUsername(), uniqueAlertables.get(p).getSeverity(), uniqueAlertables.get(p).getCount() + 1);
+          usa.set(uniqueAlertables.get(p).getUsername(),
+                  uniqueAlertables.get(p).getSeverity(),
+                  uniqueAlertables.get(p).getCount() + 1,
+                  Math.max(uniqueAlertables.get(p).getStartTimeLong(), row.startTime),
+                  Math.max(uniqueAlertables.get(p).getFinishTimeLong(),row.finishTime));
           uniqueAlertables.set(p, usa);
         }
       }
     }
-    // sort aggregate error list by count by user by severity
-    Collections.sort(uniqueAlertables, new UserSeverityAggregateSorter());
+    // sort aggregate error list by descending count by user by descending severity
+    Collections.sort(uniqueAlertables, new UserSeverityAggregateDescendingSorter());
     // keep only top N
     s = uniqueAlertables.size() - 1;
     for (int i = s; i >= 0; i--) {
@@ -1829,5 +1841,28 @@ public class Application extends Controller {
     return uniqueAlertables;
   }
 
+  private static final String[] HEADERS_TO_TRY = {
+          "X-Forwarded-For",
+          "Proxy-Client-IP",
+          "WL-Proxy-Client-IP",
+          "HTTP_X_FORWARDED_FOR",
+          "HTTP_X_FORWARDED",
+          "HTTP_X_CLUSTER_CLIENT_IP",
+          "HTTP_CLIENT_IP",
+          "HTTP_FORWARDED_FOR",
+          "HTTP_FORWARDED",
+          "HTTP_VIA",
+          "REMOTE_ADDR" };
+
+  private static String getClientIpAddress() {
+    for (String header : HEADERS_TO_TRY) {
+      String ip = request().getHeader(header);
+      if (ip != null && ip.length() != 0 && !"unknown".equalsIgnoreCase(ip)) {
+        return ip;
+      }
+    }
+    String ip = request().remoteAddress() == null ? "" : request().remoteAddress();
+    return ip.isEmpty() ? "(unknown IP)" : ip;
+  }
 
 }

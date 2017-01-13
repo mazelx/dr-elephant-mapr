@@ -48,11 +48,12 @@ public class ApplicationTest {
     int topN = 5;
     Long now = System.currentTimeMillis();
     Long sevenDaysAgo = now - (7 * DAY);
-    List<UserSeverityAggregate> usaResults = Application.getUserSeverityAggregate(now, sevenDaysAgo, 3, 5, "!TEST!", topN);
-    Content html = homePage.render(5, 2, 3, 0, rightNow, 0,0,0,0,0,0,0,0,0,0,0,0,
+    List<UserSeverityAggregate> usaResults = Application.getUserSeverityAggregate(sevenDaysAgo, now, 3, 5, "!TEST!", topN);
+    int usaSize = usaResults.size();
+    Content html = homePage.render(5, 2, 3, 0, rightNow, 0,0,0,0,0,0,0,0,0,0,0,0,usaSize,"Top 5 Unique Offenders in Last 72 Hours",
               searchResults.render("Last 50 No status/Low/Moderate In Past 24Hr", null),
               searchResults.render("Last 7 Days Exceptions/Severe/Critical", null),
-              userSeverityAggregateResults.render(topN, usaResults)
+              userSeverityAggregateResults.render("Top Unique Offenders in Last 72Hr", usaResults)
     );
     assertEquals("text/html", html.contentType());
     assertTrue(html.body().contains("As Of <b>"+rightNow+"</b>:"));

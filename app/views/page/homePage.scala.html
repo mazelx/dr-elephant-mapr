@@ -17,7 +17,8 @@
 @(numJobsAnalyzed: Int, numJobsSevere: Int, numJobsCritical: Int, numJobExceptions: Int, rightNow: String,
 numHadoopJava: Int, numSpark: Int, numHive: Int, numKafka: Int,
 numJobsSevereHadoopJava: Int, numJobsSevereSpark: Int, numJobsSevereHive: Int, numJobsSevereKafka: Int,
-numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: Int, numJobsCriticalKafka: Int
+numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: Int, numJobsCriticalKafka: Int,
+userExceptionSummarySize: Int, userExceptionSummaryTitle: String
 )(results: Html)(exceptions: Html)(userExceptionSummary: Html)
 
 @*
@@ -31,42 +32,58 @@ numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: 
 
 @main("Dr. Elephant", "dashboard") {
 <div class="jumbotron">
+    @if(numJobsAnalyzed == -1) {
+    <b>Starting up; please wait...</b>
+    } else {
     <table border="0">
-        <tr><td span="5" width="50%" valign="top">
-            <h2>As Of <b>@rightNow</b>:</h2>
-            <p><b>@numJobsAnalyzed</b> jobs ran on this cluster in the last 24h (@numHadoopJava HadoopJava, @numSpark Spark, @numHive Hive, @numKafka Kafka)<br>
-                @if(numJobsSevere==0) {
-                None of them need tuning.<br>
+        <tr>
+            @if(userExceptionSummarySize>0) {
+            <td width="50%" valign="top">
                 } else {
-                <b>@numJobsSevere</b> of them could use some tuning (
-                @if(numJobsSevereHadoopJava>0){@numJobsSevereHadoopJava HadoopJava}
-                @if(numJobsSevereSpark>0){@if(numJobsSevereHadoopJava>0){, }@numJobsSevereSpark Spark}
-                @if(numJobsSevereHive>0){@if(numJobsSevereHadoopJava+numJobsSevereSpark>0){, }@numJobsSevereHive Hive}
-                @if(numJobsSevereKafka>0){@if(numJobsSevereHadoopJava+numJobsSevereSpark+numJobsSevereHive>0){, }@numJobsSevereKafka Hive}
-                )<br>
+            <td width="100%" valign="top">
                 }
-                @if(numJobsCritical==0) {
-                None of them need immediate attention due to critical errors.<br>
-                } else {
-                <b>@numJobsCritical</b> of them threw critical errors and need attention (
-                @if(numJobsCriticalHadoopJava>0){@numJobsCriticalHadoopJava HadoopJava}
-                @if(numJobsCriticalSpark>0){@if(numJobsCriticalHadoopJava>0){, }@numJobsCriticalSpark Spark}
-                @if(numJobsCriticalHive>0){@if(numJobsCriticalHadoopJava+numJobsCriticalSpark>0){, }@numJobsCriticalHive Hive}
-                @if(numJobsCriticalKafka>0){@if(numJobsCriticalHadoopJava+numJobsCriticalSpark+numJobsCriticalHive>0){, }@numJobsCriticalKafka Kafka}
-                )<br>
-                }
-                @if(numJobExceptions==0) {
-                No exceptions occurred.<br>
-                }
-                Use the Search page above for more detailed reporting.<br>
-            </p>
-        </td></tr>
-    <tr><td span="5" width="50%" valign="top">
-        @userExceptionSummary
-        </td>
-    </tr>
+                <h2>As Of <b>@rightNow</b>:</h2>
+                <p><b>@numJobsAnalyzed</b> jobs ran on this cluster in the last 24h<br>&nbsp;&nbsp;&nbsp;&nbsp;(@numHadoopJava HadoopJava, @numSpark Spark<!--, @numHive Hive, @numKafka Kafka-->)<br>
+                    @if(numJobsSevere==0) {
+                    None of them need tuning.<br>
+                    } else {
+                    <b>@numJobsSevere</b> of them could use some tuning <br>&nbsp;&nbsp;&nbsp;&nbsp;(
+                    @if(numJobsSevereHadoopJava>0){@numJobsSevereHadoopJava HadoopJava}
+                    @if(numJobsSevereSpark>0){@if(numJobsSevereHadoopJava>0){, }@numJobsSevereSpark Spark}
+                    <!--
+                    @if(numJobsSevereHive>0){@if(numJobsSevereHadoopJava+numJobsSevereSpark>0){, }@numJobsSevereHive Hive}
+                    @if(numJobsSevereKafka>0){@if(numJobsSevereHadoopJava+numJobsSevereSpark+numJobsSevereHive>0){, }@numJobsSevereKafka Hive}
+                    -->
+                    )<br>
+                    }
+                    @if(numJobsCritical==0) {
+                    None of them need immediate attention due to critical errors.<br>
+                    } else {
+                    <b>@numJobsCritical</b> of them threw critical errors and need attention<br>&nbsp;&nbsp;&nbsp;&nbsp;(
+                    @if(numJobsCriticalHadoopJava>0){@numJobsCriticalHadoopJava HadoopJava}
+                    @if(numJobsCriticalSpark>0){@if(numJobsCriticalHadoopJava>0){, }@numJobsCriticalSpark Spark}
+                    <!--
+                    @if(numJobsCriticalHive>0){@if(numJobsCriticalHadoopJava+numJobsCriticalSpark>0){, }@numJobsCriticalHive Hive}
+                    @if(numJobsCriticalKafka>0){@if(numJobsCriticalHadoopJava+numJobsCriticalSpark+numJobsCriticalHive>0){, }@numJobsCriticalKafka Kafka}
+                    -->
+                    )<br>
+                    }
+                    @if(numJobExceptions==0) {
+                    No exceptions occurred.<br>
+                    }
+                    Use the Search page above for more detailed reporting.<br>
+                </p>
+            </td>
+            @if(userExceptionSummarySize>0) {
+            <td width="50%" valign="middle" align="center">
+                @userExceptionSummary
+            </td>
+            }
+        </tr>
     </table>
+    }
 </div>
+@if(numJobsAnalyzed > -1) {
 @if(numJobExceptions==0) {
 @results
 } else {
@@ -80,5 +97,6 @@ numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: 
         </td>
     </tr>
 </table>
+}
 }
 }

@@ -14,7 +14,7 @@
 * the License.
 *@
 
-@(topN: Int, results: java.util.List[com.cardlytics.drelephant.aggregates.UserSeverityAggregate])
+@(userExceptionSummaryTitle: String, results: java.util.List[com.cardlytics.drelephant.aggregates.UserSeverityAggregate])
 
 @*
 * The layout of the homepage of Dr. Elephant or the dashboard
@@ -25,30 +25,36 @@
 * @param results The results to be displayed on the dashboard
 *@
 
-@import com.linkedin.drelephant.analysis.Severity
 @if(results != null && results.nonEmpty) {
-<!-- <div class="user"> -->
-<table border="1">
-    <tr width="100%" valign="top">
-        <td width="34%">User</td>
-        <td width="33%">Severity</td>
-        <td width="33%">Count</td>
-    </tr>
-    @for(i <- 0 to topN - 1) {
-        @if(i < results.size()) {
-        <tr width="100%" valign="top">
-            <td valign="top">
-                @results.get(i).getUsername()
-            </td>
-            <td valign="top">
-                @results.get(i).getSeverityText()
-            </td>
-            <td valign="top">
-                @results.get(i).getCountText()
-            </td>
-        </tr>
-        }
-    }
-</table>
-<!-- </div> -->
+    <div class="jumbotron card-table-b">
+        <b>@userExceptionSummaryTitle</b><br>
+        <table>
+            <tr>
+                <td>User</td>
+                <td>Severity</td>
+                <td>Count</td>
+                <td>Last Started On</td>
+                <td>Last Finished On</td>
+            </tr>
+            @for(i <- 0 to results.size() - 1) {
+                <tr>
+                    <td>
+                    @results.get(i).getUsername()
+                    </td>
+                    <td>
+                    @results.get(i).getSeverityText()
+                    </td>
+                    <td>
+                    @results.get(i).getCountText()
+                    </td>
+                    <td>
+                    @results.get(i).getStartTimeString()
+                    </td>
+                    <td>
+                    @results.get(i).getFinishTimeString()
+                    </td>
+                </tr>
+            }
+        </table>
+    </div>
 }

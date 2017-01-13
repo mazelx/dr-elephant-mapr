@@ -2,22 +2,24 @@ package com.cardlytics.drelephant.aggregates;
 
 import com.linkedin.drelephant.analysis.Severity;
 
+import java.text.SimpleDateFormat;
+
 public class UserSeverityAggregate {
 
-    private String _username;
-    private Severity _severity;
-    private int _count;
-    private Long _sortidx;
+    private String _username = "";
+    private Severity _severity = Severity.NONE;
+    private int _count = 0;
+    private Long _startTime = Long.MIN_VALUE;
+    private Long _finishTime = Long.MIN_VALUE;
 
-    private long encode(String input) {
+    private String encode(String input) {
         String rtn = "";
         String first5 = input.toLowerCase().concat("      ").substring(0,5);
-        int ascii;
         for (int i = 0; i < 5 ; ++i) {
-            ascii = (int)first5.charAt(i);
+            int ascii = (int)first5.charAt(i);
             rtn = rtn.concat(String.valueOf(ascii));
         }
-        return Long.parseLong(rtn);
+        return String.valueOf(Long.parseLong(rtn));
     }
 
     public String getUsername() {
@@ -32,19 +34,23 @@ public class UserSeverityAggregate {
     public int getCount() {
         return this._count;
     }
+    public String getStartTimeString() { return new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(_startTime); }
+    public String getFinishTimeString() { return new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(_finishTime); }
+    public Long getStartTimeLong() { return _startTime; }
+    public Long getFinishTimeLong() { return _finishTime; }
     public String getCountText() {
         return String.valueOf(this._count);
     }
     public Long getSortIndex() {
-        return this._sortidx;
+        return Long.valueOf(String.valueOf(this._count).concat(this.encode(this._username).concat(String.valueOf(this._severity.getValue()))));
     }
 
-    public void set(String username, Severity severity, int count) {
+    public void set(String username, Severity severity, int count, Long startTime, Long finishTime) {
         this._username = username;
         this._severity = severity;
         this._count = count;
-        this._sortidx = Long.valueOf(String.valueOf(this._count).concat(String.valueOf(this.encode(this._username)).concat(String.valueOf(this._severity.getValue()))));
+        this._startTime = startTime;
+        this._finishTime = finishTime;
     }
 
 }
-
