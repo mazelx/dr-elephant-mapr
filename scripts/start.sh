@@ -166,6 +166,10 @@ OPTS+=" $jvm_args -Djava.library.path=$JAVA_LIB_PATH"
 OPTS+=" -Dhttp.port=$port"
 OPTS+=" -Ddb.default.url=$db_loc -Ddb.default.user=$db_user -Ddb.default.password=$db_password"
 
+if [ -n "${version}" ]; then
+  OPTS+=" -Dversion=$version"
+fi
+
 # Start Dr. Elaphant
 echo "Starting Dr. Elephant ...."
 nohup ./bin/dr-elephant ${OPTS} > $project_root/dr.log 2>&1 &
