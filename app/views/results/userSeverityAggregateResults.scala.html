@@ -25,36 +25,39 @@
 * @param results The results to be displayed on the dashboard
 *@
 
-@if(results != null && results.nonEmpty) {
-    <div class="jumbotron card-table-b">
-        <b>@userExceptionSummaryTitle</b><br>
-        <table>
+
+<div class="jumbotron card-table-b">
+    <b>@userExceptionSummaryTitle</b><br>
+    <table>
+    @if(results != null && results.nonEmpty) {
+        <tr>
+            <td>User</td>
+            <td>Severity</td>
+            <td>Count</td>
+            <td>Last Started On</td>
+            <td>Last Finished On</td
+        </tr>
+        @for(i <- 0 to results.size() - 1) {
             <tr>
-                <td>User</td>
-                <td>Severity</td>
-                <td>Count</td>
-                <td>Last Started On</td>
-                <td>Last Finished On</td>
+                <td>
+                @results.get(i).getUsername()
+                </td>
+                <td>
+                @results.get(i).getSeverityText()
+                </td>
+                <td>
+                @results.get(i).getCountText()
+                </td>
+                <td>
+                @results.get(i).getStartTimeString()
+                </td>
+                <td>
+                @results.get(i).getFinishTimeString()
+                </td>
             </tr>
-            @for(i <- 0 to results.size() - 1) {
-                <tr>
-                    <td>
-                    @results.get(i).getUsername()
-                    </td>
-                    <td>
-                    @results.get(i).getSeverityText()
-                    </td>
-                    <td>
-                    @results.get(i).getCountText()
-                    </td>
-                    <td>
-                    @results.get(i).getStartTimeString()
-                    </td>
-                    <td>
-                    @results.get(i).getFinishTimeString()
-                    </td>
-                </tr>
-            }
-        </table>
-    </div>
-}
+        }
+    } else {
+        <tr align="center" valign="middle"><td align="center" valign="middle">None found.<br></td></tr>
+    }
+    </table>
+</div>

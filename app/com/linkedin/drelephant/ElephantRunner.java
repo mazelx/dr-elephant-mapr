@@ -98,7 +98,8 @@ public class ElephantRunner implements Runnable {
 
   @Override
   public void run() {
-    logger.info("Dr. Elephant v2.0.6-CL has started");
+    String version = play.Play.application().configuration().getString("version", "");
+    logger.info("Dr. Elephant "+version+" starting");
     try {
       _hadoopSecurity = new HadoopSecurity();
       _hadoopSecurity.doAs(new PrivilegedAction<Void>() {
@@ -128,6 +129,7 @@ public class ElephantRunner implements Runnable {
 
             try {
               _hadoopSecurity.checkLogin();
+              
             } catch (IOException e) {
               logger.info("Error with hadoop kerberos login", e);
               //Wait for a while before retry

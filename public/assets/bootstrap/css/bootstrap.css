@@ -1660,7 +1660,7 @@ input[type="radio"],
 input[type="checkbox"] {
   margin: 4px 0 0;
   margin-top: 1px \9;
-  /* IE8-9 */
+  /* IE8-9  */
   line-height: normal;
 }
 input[type="file"] {
@@ -4271,7 +4271,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 }
 .label {
   display: inline;
-  padding: .2em .6em .3em;
+  padding: .2em .3em .1em;
   font-size: 75%;
   font-weight: bold;
   line-height: 1;
@@ -5796,7 +5796,7 @@ button.close {
 /*# sourceMappingURL=bootstrap.css.map */
 .card-table-a
 {
-    font-family: inherit;
+	font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
 	font-size: 14px;
 	/* margin: 45px; */
 	margin: 0 auto;
@@ -5829,21 +5829,20 @@ button.close {
 }
 .card-table-b
 {
-  font-family: inherit;
-  font-size: 12px;
+  font-family:  inherit;
+  font-size: 8px;
   /* margin: 45px; */
   margin: 0 auto;
-  width: 480px;
+  width: drstartpx;
   text-align: center;
   border-collapse: collapse;
-  border-top: 7px solid #FFFFE0;
-  border-bottom: 7px solid #FFFFE0;
+  border-top: 1px solid #BDB76B;
+  border-bottom: 1px solid #BDB76B;
+
 }
 .card-table-b th
 {
-  font-size: 12px;
-  font-weight: normal;
-  padding: 8px;
+  padding: 4px;
   background: #FAFAD2;
   border-right: 1px solid #BDB76B;
   border-left: 1px solid #BDB76B;
@@ -5851,10 +5850,10 @@ button.close {
 }
 .card-table-b td
 {
-  padding: 8px;
+  padding: 4px;
   background: #FFFFE0;
   border-right: 1px solid #BDB76B;
   border-left: 1px solid #BDB76B;
   color: #333300;
 }
-/*# sourceMappingURL=bootstrap.css.map */
+

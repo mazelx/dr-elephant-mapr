@@ -37,11 +37,7 @@ userExceptionSummarySize: Int, userExceptionSummaryTitle: String
     } else {
     <table border="0">
         <tr>
-            @if(userExceptionSummarySize>0) {
             <td width="50%" valign="top">
-                } else {
-            <td width="100%" valign="top">
-                }
                 <h2>As Of <b>@rightNow</b>:</h2>
                 <p><b>@numJobsAnalyzed</b> jobs ran on this cluster in the last 24h<br>&nbsp;&nbsp;&nbsp;&nbsp;(@numHadoopJava HadoopJava, @numSpark Spark<!--, @numHive Hive, @numKafka Kafka-->)<br>
                     @if(numJobsSevere==0) {
@@ -74,11 +70,9 @@ userExceptionSummarySize: Int, userExceptionSummaryTitle: String
                     Use the Search page above for more detailed reporting.<br>
                 </p>
             </td>
-            @if(userExceptionSummarySize>0) {
             <td width="50%" valign="middle" align="center">
                 @userExceptionSummary
             </td>
-            }
         </tr>
     </table>
     }

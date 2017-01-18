@@ -145,7 +145,6 @@ public class Application extends Controller {
   private static int _numJobsSevereKafka = 0;
   private static String _rightNow = new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(new Date());
 
-
   /**
   * Serves the initial index.html page for the new user interface. This page contains the whole web app
   */
@@ -289,10 +288,8 @@ public class Application extends Controller {
       _numJobsAnalyzed = -1;
     }
 
-
-
-    String goodTitle = "Last 50Jobs/15Days w/Low/Moderate Status";
-    String badTitle = "Last 50Jobs/15Days w/Exceptions/Severe/Critical Status";
+    String goodTitle = "Last 15 Days, OK/Low/Moderate Status (Max 50 Jobs)";
+    String badTitle = "Last 15 Days, Severe/Critical Status (Max 50 Jobs)";
     int topN = 5;
     String usaTitle = "Top Unique Offenders in Last 72Hr";
 
