@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.linkedin.drelephant.util.Utils;
-import com.cardlytics.drelephant.exceptions.NoYarnClientAttemptInfoExistsException;
+import com.cardlytics.drelephant.exceptions.InvalidJSONResponseException;
 import com.cardlytics.drelephant.exceptions.MissingYarnHistoryServerInfoException;
 import models.AppHeuristicResult;
 import models.AppResult;
@@ -72,6 +72,8 @@ public class ElephantRunner implements Runnable {
   private HadoopSecurity _hadoopSecurity;
   private ThreadPoolExecutor _threadPoolExecutor;
   private AnalyticJobGenerator _analyticJobGenerator;
+  private long _startTime;
+  private boolean _caughtUp = false;
 
   private void loadGeneralConfiguration() {
     Configuration configuration = ElephantContext.instance().getGeneralConf();
@@ -98,6 +100,8 @@ public class ElephantRunner implements Runnable {
 
   @Override
   public void run() {
+    _startTime = System.currentTimeMillis();
+    _caughtUp = false;
     String version = play.Play.application().configuration().getString("version", "");
     logger.info("Dr. Elephant "+version+" starting");
     try {
@@ -149,6 +153,10 @@ public class ElephantRunner implements Runnable {
 
             for (AnalyticJob analyticJob : todos) {
               _threadPoolExecutor.submit(new ExecutorJob(analyticJob));
+              if (analyticJob.getStartTime() >= _startTime && ! _caughtUp) {
+                logger.info("ALL CAUGHT UP as of now");
+                _caughtUp = true;
+              }
             }
 
             int queueSize = _threadPoolExecutor.getQueue().size();
@@ -178,11 +186,9 @@ public class ElephantRunner implements Runnable {
 
     @Override
     public void run() {
-      boolean isYarnClientJob = false;
-      boolean hasAgedOutOfYarn = false;
+      boolean retryOnError = true;
       try {
-        isYarnClientJob = false;
-        hasAgedOutOfYarn = false;
+        retryOnError = true;
         String analysisName = String.format("%s %s", _analyticJob.getAppType().getName(), _analyticJob.getAppId());
         long analysisStartTimeMillis = System.currentTimeMillis();
         logger.info(String.format("Analyzing %s", analysisName));
@@ -204,7 +210,7 @@ public class ElephantRunner implements Runnable {
         } catch (java.security.PrivilegedActionException e) {
           // logger.info(e.getMessage() + "; ignoring.");
         } catch (java.io.FileNotFoundException e) {
-          // logger.info(e.getMessage() + "; ignoring.");
+          // logger.info(e.getMessage() + "; ignoring.");v
         } catch (Exception e) {
           throw e;
         }
@@ -219,20 +225,20 @@ public class ElephantRunner implements Runnable {
         logger.info(ExceptionUtils.getStackTrace(e));
 
         Thread.currentThread().interrupt();
-      } catch (NoYarnClientAttemptInfoExistsException e) {
-        isYarnClientJob = true;
+      } catch (InvalidJSONResponseException e) {
+        retryOnError = false;
         //logger.error(e.getMessage());
         if (_analyticJob != null) {
           MetricsController.markSkippedJob();
         }
       } catch (MissingYarnHistoryServerInfoException e) {
-        hasAgedOutOfYarn = true;
+        retryOnError = false;
         //logger.error(e.getMessage());
         if (_analyticJob != null) {
           MetricsController.markSkippedJob();
         }
       } catch (Exception e) {
-        if (! isYarnClientJob && ! hasAgedOutOfYarn) {
+        if (retryOnError) {
           logger.error(e.getMessage());
           logger.error(ExceptionUtils.getStackTrace(e));
 

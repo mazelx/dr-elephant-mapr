@@ -17,8 +17,7 @@
 @(numJobsAnalyzed: Int, numJobsSevere: Int, numJobsCritical: Int, numJobExceptions: Int, rightNow: String,
 numHadoopJava: Int, numSpark: Int, numHive: Int, numKafka: Int,
 numJobsSevereHadoopJava: Int, numJobsSevereSpark: Int, numJobsSevereHive: Int, numJobsSevereKafka: Int,
-numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: Int, numJobsCriticalKafka: Int,
-userExceptionSummarySize: Int, userExceptionSummaryTitle: String
+numJobsCriticalHadoopJava: Int, numJobsCriticalSpark: Int, numJobsCriticalHive: Int, numJobsCriticalKafka: Int
 )(results: Html)(exceptions: Html)(userExceptionSummary: Html)
 
 @*
@@ -39,7 +38,7 @@ userExceptionSummarySize: Int, userExceptionSummaryTitle: String
         <tr>
             <td width="50%" valign="top">
                 <h2>As Of <b>@rightNow</b>:</h2>
-                <p><b>@numJobsAnalyzed</b> jobs ran on this cluster in the last 24h<br>&nbsp;&nbsp;&nbsp;&nbsp;(@numHadoopJava HadoopJava, @numSpark Spark<!--, @numHive Hive, @numKafka Kafka-->)<br>
+                <p><b>@numJobsAnalyzed</b> jobs ran on this cluster in the last 72h<br>&nbsp;&nbsp;&nbsp;&nbsp;(@numHadoopJava HadoopJava, @numSpark Spark<!--, @numHive Hive, @numKafka Kafka-->)<br>
                     @if(numJobsSevere==0) {
                     None of them need tuning.<br>
                     } else {

@@ -22,7 +22,7 @@ import scala.collection.JavaConverters
 
 import com.linkedin.drelephant.analysis.ApplicationType
 import com.linkedin.drelephant.configurations.aggregator.AggregatorConfigurationData
-import com.linkedin.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
+import com.cardlytics.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary}
 import org.apache.spark.scheduler.SparkListenerEnvironmentUpdate
 import org.scalatest.{FunSpec, Matchers}
@@ -30,7 +30,7 @@ import org.scalatest.{FunSpec, Matchers}
 class SparkMetricsAggregatorTest extends FunSpec with Matchers {
   import SparkMetricsAggregatorTest._
 
-  describe("SparkMetricsAggregator") {
+  describe("SparkMetricsAggregatorFS") {
     val aggregatorConfigurationData = newFakeAggregatorConfigurationData(
       Map("allocated_memory_waste_buffer_percentage" -> "0.5")
     )
@@ -129,7 +129,7 @@ object SparkMetricsAggregatorTest {
   import JavaConverters._
 
   def newFakeAggregatorConfigurationData(params: Map[String, String] = Map.empty): AggregatorConfigurationData =
-    new AggregatorConfigurationData("org.apache.spark.SparkMetricsAggregator", new ApplicationType("SPARK"), params.asJava)
+    new AggregatorConfigurationData("org.apache.spark.SparkMetricsAggregatorFS", new ApplicationType("SPARK"), params.asJava)
 
   def newFakeSparkListenerEnvironmentUpdate(appConfigurationProperties: Map[String, String]): SparkListenerEnvironmentUpdate =
     SparkListenerEnvironmentUpdate(Map("Spark Properties" -> appConfigurationProperties.toSeq))

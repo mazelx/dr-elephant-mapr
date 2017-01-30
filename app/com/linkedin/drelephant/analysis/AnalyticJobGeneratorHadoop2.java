@@ -55,7 +55,8 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
   private static final String DISTRO_MAPR_NAME = "MapR";
 
   // We provide one minute job fetch delay due to the job sending lag from AM/NM to JobHistoryServer HDFS
-  private static final long FETCH_DELAY = 60000;
+    // bml Cardlytics 1-25-2017 1 min (60000ms) isn't enough on smaller clusters; some jobs return null data due to noncompletion of collection. Make it 5 min (300Kms) instead.
+  private static final long FETCH_DELAY = 300000;
 
   // Generate a token update interval with a random deviation so that it does not update the token exactly at the same
   // time with other token updaters (e.g. ElephantFetchers).
@@ -123,7 +124,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
     }
         } else {
             logger.info(distroName+ " Hadoop distro specified in config; looking for ResourceManager.");
-            if (distroName == "MapR") {
+            if (distroName.equals("MapR")) {
                 _resourceManagerAddress = executeShellCommand(DISTRO_MAPR_RESOURCE_MANAGER_ADDRESS, 2);
                 if (_resourceManagerAddress == null) {
                     throw new RuntimeException(
@@ -301,7 +302,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
             }
 
         } catch (Exception e) {
-            logger.error(e.getMessage() + " at " + e.getStackTrace());
+            logger.error(e.getMessage());
         }
 
         return output.toString();

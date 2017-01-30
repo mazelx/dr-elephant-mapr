@@ -24,12 +24,11 @@ import scala.util.control.NonFatal
 
 import com.linkedin.drelephant.analysis.{AnalyticJob, ElephantFetcher}
 import com.linkedin.drelephant.configurations.fetcher.FetcherConfigurationData
-import com.linkedin.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
+import com.cardlytics.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
 import com.linkedin.drelephant.util.SparkUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
-
 
 /**
   * A fetcher that gets Spark-related data from a combination of the Spark monitoring REST API and Spark event logs.
@@ -78,6 +77,7 @@ object SparkFetcher {
   import Async.{async, await}
 
   val SPARK_EVENT_LOG_ENABLED_KEY = "spark.eventLog.enabled"
+  val SPARK_EVENT_LOG_ENABLE_RECURSE = "spark.eventLog.recurse.enabled"
   val DEFAULT_TIMEOUT = Duration(30, SECONDS)
 
   private def doFetchData(

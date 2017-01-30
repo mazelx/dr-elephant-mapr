@@ -24,7 +24,7 @@ import scala.concurrent.duration.Duration
 import com.linkedin.drelephant.analysis.{Heuristic, HeuristicResult, HeuristicResultDetails, Severity, SeverityThresholds}
 import com.linkedin.drelephant.configurations.heuristic.HeuristicConfigurationData
 import com.linkedin.drelephant.math.Statistics
-import com.linkedin.drelephant.spark.data.SparkApplicationData
+import com.cardlytics.drelephant.spark.data.SparkApplicationData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.StageData
 import org.apache.spark.status.api.v1.StageStatus
 

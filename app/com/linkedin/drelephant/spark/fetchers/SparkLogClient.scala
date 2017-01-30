@@ -24,7 +24,7 @@ import scala.collection.mutable.HashMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 
-import com.linkedin.drelephant.spark.data.SparkLogDerivedData
+import com.cardlytics.drelephant.spark.data.SparkLogDerivedData
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.log4j.Logger

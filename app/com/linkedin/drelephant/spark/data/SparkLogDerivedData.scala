@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.linkedin.drelephant.spark.data
+package com.cardlytics.drelephant.spark.data
 
 import org.apache.spark.scheduler.SparkListenerEnvironmentUpdate
 

@@ -22,17 +22,19 @@ import java.util.{Calendar, SimpleTimeZone}
 
 import scala.async.Async
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
+import scala.util.control.{Exception, NonFatal}
+import scala.util.{Try, Success, Failure}
+import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.linkedin.drelephant.spark.data.SparkRestDerivedData
+import com.cardlytics.drelephant.spark.data.SparkRestDerivedData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary, JobData, StageData}
 import javax.ws.rs.client.{Client, ClientBuilder, WebTarget}
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.NotFoundException
 
-import com.cardlytics.drelephant.exceptions.{NoYarnClientAttemptInfoExistsException, MissingYarnHistoryServerInfoException}
+import com.cardlytics.drelephant.exceptions.{InvalidJSONResponseException, MissingYarnHistoryServerInfoException}
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 
@@ -73,52 +75,68 @@ class SparkRestClient(sparkConf: SparkConf) {
     val appTarget = apiTarget.path(s"applications/${appId}")
     logger.info(s"calling REST API at ${appTarget.getUri}")
     try {
-      val applicationInfo = getApplicationInfo(appTarget)
-      // Limit scope of async.
-      async {
-        val lastAttemptId = applicationInfo.attempts.maxBy {
-          _.startTime
-        }.attemptId
-        lastAttemptId match {
-          case Some(attemptId) => {
-            val attemptTarget = appTarget.path(attemptId)
-            val futureJobDatas = async {
-              getJobDatas(attemptTarget)
+      Option(getApplicationInfo(appTarget)) match {
+        case Some(applicationInfo) => {
+          // Limit scope of async.
+          async {
+            val lastAttemptId = applicationInfo.attempts.maxBy {
+              _.startTime
+            }.attemptId
+            lastAttemptId match {
+              case Some(attemptId) => {
+                // yarn-cluster mode
+                val attemptTarget = appTarget.path(attemptId)
+                val futureJobDatas = async {
+                  getJobDatas(attemptTarget)
+                }
+                val futureStageDatas = async {
+                  getStageDatas(attemptTarget)
+                }
+                val futureExecutorSummaries = async {
+                  getExecutorSummaries(attemptTarget)
+                }
+                SparkRestDerivedData(
+                  applicationInfo,
+                  await(futureJobDatas),
+                  await(futureStageDatas),
+                  await(futureExecutorSummaries)
+                )
+              }
+              case _ => {
+                // yarn-client mode
+                val attemptTarget = appTarget
+                val futureJobDatas = async {
+                  getJobDatas(attemptTarget)
+                }
+                val futureStageDatas = async {
+                  getStageDatas(attemptTarget)
+                }
+                val futureExecutorSummaries = async {
+                  getExecutorSummaries(attemptTarget)
+                }
+                SparkRestDerivedData(
+                  applicationInfo,
+                  await(futureJobDatas),
+                  await(futureStageDatas),
+                  await(futureExecutorSummaries)
+                )
+              }
             }
-            val futureStageDatas = async {
-              getStageDatas(attemptTarget)
-            }
-            val futureExecutorSummaries = async {
-              getExecutorSummaries(attemptTarget)
-            }
-            SparkRestDerivedData(
-              applicationInfo,
-              await(futureJobDatas),
-              await(futureStageDatas),
-              await(futureExecutorSummaries)
-            )
           }
-          case None => {
-            throw new NoYarnClientAttemptInfoExistsException(s"${appId} was initiated from yarn-client, so no attempt information exists. Skipping job.")
-          }
+        }
+        case _ => {
+          throw new MissingYarnHistoryServerInfoException(s"application ${appId} has aged out of the YARN history server; skipping job and job will not be retried")
         }
       }
     } catch {
-      case e: javax.ws.rs.NotFoundException => throw new MissingYarnHistoryServerInfoException(s"${appId} has aged out of the YARN History Server. Skipping job.")
+      case e: com.fasterxml.jackson.core.JsonParseException => throw new InvalidJSONResponseException(s"error parsing JSON response from ${appTarget.getUri}; skipping job and job will not be retried")
+      case e: javax.ws.rs.NotFoundException => throw new MissingYarnHistoryServerInfoException(s"Application ${appId} has aged out of the YARN History Server; skipping job and job will not be retried")
       case NonFatal(e) => throw e
     }
   }
 
-
   private def getApplicationInfo(appTarget: WebTarget): ApplicationInfo = {
-    try {
-       get(appTarget, SparkRestObjectMapper.readValue[ApplicationInfo])
-    } catch {
-      case NonFatal(e) => {
-        logger.error(s"error reading ${appTarget.getUri}", e)
-        throw e
-      }
-    }
+    get(appTarget, SparkRestObjectMapper.readValue[ApplicationInfo])
   }
 
   private def getJobDatas(attemptTarget: WebTarget): Seq[JobData] = {
@@ -176,6 +194,13 @@ object SparkRestClient {
     objectMapper
   }
 
-  def get[T](webTarget: WebTarget, converter: String => T): T =
-    converter(webTarget.request(MediaType.APPLICATION_JSON).get(classOf[String]))
+  def get[T](webTarget: WebTarget, converter: String => T): T = {
+    try {
+      converter(webTarget.request(MediaType.APPLICATION_JSON).get(classOf[String]))
+    }
+    catch {
+      case e: com.fasterxml.jackson.core.JsonParseException => throw new InvalidJSONResponseException(s"error parsing JSON response; skipping job and job will not be retried")
+      case NonFatal(e) => throw e
+    }
+  }
 }
