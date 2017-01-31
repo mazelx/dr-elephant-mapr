@@ -24,6 +24,7 @@ import scala.async.Async
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.{Exception, NonFatal}
 import scala.util.{Try, Success, Failure}
+import sys.process._
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -66,7 +67,9 @@ class SparkRestClient(sparkConf: SparkConf) {
         baseUri
       }
     case None =>
-      throw new IllegalArgumentException("spark.yarn.historyServer.address not provided; can't use Spark REST API")
+      //throw new IllegalArgumentException("spark.yarn.historyServer.address not provided; can't use Spark REST API")
+      val cmd = "mar"
+      val baseUri = new URI("maprcli urls -name historyserver | grep http | grep '://'") | grep
   }
 
   private val apiTarget: WebTarget = client.target(historyServerUri).path(API_V1_MOUNT_PATH)
@@ -204,3 +207,4 @@ object SparkRestClient {
     }
   }
 }
+

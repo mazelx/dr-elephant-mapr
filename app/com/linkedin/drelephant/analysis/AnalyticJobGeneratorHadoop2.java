@@ -66,7 +66,7 @@ public class AnalyticJobGeneratorHadoop2 implements AnalyticJobGenerator {
   private String _resourceManagerAddress;
   private long _lastTime = 0;
   private long _currentTime = 0;
-  private long _tokenUpdatedTime = 0;
+  private long _tokenUpdatedTime = 0;:q!
   private AuthenticatedURL.Token _token;
   private AuthenticatedURL _authenticatedURL;
   private final ObjectMapper _objectMapper = new ObjectMapper();
