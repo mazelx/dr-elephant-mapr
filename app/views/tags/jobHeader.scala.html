@@ -27,12 +27,12 @@
 *@
 
 <p class="list-group-item-heading">
-  <div class="left"><h4 class="list-group-item-heading">[@result.username] [@result.jobType] @result.id</h4></div>
-  <div id="time_@result.id" class="right"></div>
-  <div>@result.name</div>
+  <div class="left"><h4 class="list-group-item-heading">[@result.username] [@result.jobType] @result.name</h4></div>
+  <div>@result.id</div>
+  <div id="time_@result.id"></div>
 </p>
 
 <script type="text/javascript">
-  var ts = new Date(@result.finishTime);
-  document.getElementById("time_@result.id").innerHTML = ts.toString();
+  var fs = new Date(@result.finishTime);
+  document.getElementById("time_@result.id").innerHTML = fs.toString();
 </script>

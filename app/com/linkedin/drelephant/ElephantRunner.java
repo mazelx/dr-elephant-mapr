@@ -23,32 +23,28 @@ import com.linkedin.drelephant.analysis.AnalyticJobGenerator;
 import com.linkedin.drelephant.analysis.HDFSContext;
 import com.linkedin.drelephant.analysis.HadoopSystemContext;
 import com.linkedin.drelephant.analysis.AnalyticJobGeneratorHadoop2;
-import com.linkedin.drelephant.analysis.Severity;
 
 import com.linkedin.drelephant.security.HadoopSecurity;
-import com.linkedin.drelephant.spark.SparkMetricsAggregator;
 
 import controllers.MetricsController;
 import java.io.IOException;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeoutException;
 
 import com.linkedin.drelephant.util.Utils;
 import com.cardlytics.drelephant.exceptions.InvalidJSONResponseException;
-import com.cardlytics.drelephant.exceptions.MissingYarnHistoryServerInfoException;
-import models.AppHeuristicResult;
+import com.cardlytics.drelephant.exceptions.MissingHistoryServerInfoException;
 import models.AppResult;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.log4j.Logger;
-
 
 /**
  * The class that runs the Dr. Elephant daemon
@@ -185,14 +181,10 @@ public class ElephantRunner implements Runnable {
 
     @Override
     public void run() {
-      boolean retryOnError = true;
       try {
-        retryOnError = true;
         String analysisName = String.format("%s %s", _analyticJob.getAppType().getName(), _analyticJob.getAppId());
         long analysisStartTimeMillis = System.currentTimeMillis();
         logger.info(String.format("Analyzing %s", analysisName));
-        // AppResult result = _analyticJob.getAnalysis();
-        //result.save();
         try {
           AppResult result = _analyticJob.getAnalysis();
           // bml Cardlytics bug fix for underflow error
@@ -206,50 +198,33 @@ public class ElephantRunner implements Runnable {
             result.totalDelay = 0;
           }
           result.save();
-        } catch (java.security.PrivilegedActionException e) {
-          // logger.info(e.getMessage() + "; ignoring.");
-        } catch (java.io.FileNotFoundException e) {
-          // logger.info(e.getMessage() + "; ignoring.");v
-        } catch (Exception e) {
-          throw e;
+        } catch (java.security.PrivilegedActionException | java.io.FileNotFoundException e) {
+          // ignore this error
         }
         long processingTime = System.currentTimeMillis() - analysisStartTimeMillis;
         logger.info(String.format("Analysis of %s took %sms", analysisName, processingTime));
         MetricsController.setJobProcessingTime(processingTime);
         MetricsController.markProcessedJobs();
-
       } catch (InterruptedException e) {
         logger.info("Thread interrupted");
         logger.info(e.getMessage());
         logger.info(ExceptionUtils.getStackTrace(e));
-
         Thread.currentThread().interrupt();
-      } catch (InvalidJSONResponseException e) {
-        retryOnError = false;
-        //logger.error(e.getMessage());
-        if (_analyticJob != null) {
-          MetricsController.markSkippedJob();
-        }
-      } catch (MissingYarnHistoryServerInfoException e) {
-        retryOnError = false;
-        //logger.error(e.getMessage());
+      } catch (InvalidJSONResponseException | MissingHistoryServerInfoException | java.util.concurrent.TimeoutException e) {
         if (_analyticJob != null) {
           MetricsController.markSkippedJob();
         }
       } catch (Exception e) {
-        if (retryOnError) {
-          logger.error(e.getMessage());
-          logger.error(ExceptionUtils.getStackTrace(e));
-
-          if (_analyticJob != null && _analyticJob.retry()) {
-            logger.error("Add analytic job id [" + _analyticJob.getAppId() + "] into the retry list.");
-            _analyticJobGenerator.addIntoRetries(_analyticJob);
-          } else {
-            if (_analyticJob != null) {
-              MetricsController.markSkippedJob();
-              logger.error("Drop the analytic job. Reason: reached the max retries for application id = ["
-                      + _analyticJob.getAppId() + "].");
-            }
+        logger.error(e.getMessage());
+        logger.error(ExceptionUtils.getStackTrace(e));
+        if (_analyticJob != null && _analyticJob.retry()) {
+          logger.error("Add analytic job id [" + _analyticJob.getAppId() + "] into the retry list.");
+          _analyticJobGenerator.addIntoRetries(_analyticJob);
+        } else {
+          if (_analyticJob != null) {
+            MetricsController.markSkippedJob();
+            logger.error("Drop the analytic job. Reason: reached the max retries for application id = ["
+                    + _analyticJob.getAppId() + "].");
           }
         }
       }

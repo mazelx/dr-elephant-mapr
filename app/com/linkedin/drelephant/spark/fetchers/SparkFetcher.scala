@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 
+import java.util.concurrent.TimeoutException
 /**
   * A fetcher that gets Spark-related data from a combination of the Spark monitoring REST API and Spark event logs.
   */
@@ -66,6 +67,9 @@ class SparkFetcher(fetcherConfigurationData: FetcherConfigurationData)
     try {
       Await.result(doFetchData(sparkRestClient, sparkLogClient, appId), DEFAULT_TIMEOUT)
     } catch {
+      case e: java.util.concurrent.TimeoutException =>
+        logger.error(s"Timed out trying to fetch data for ${appId}; skipping job and job will not be retried", e)
+        throw e
       case NonFatal(e) =>
         logger.error(s"Failed fetching data for ${appId}", e)
         throw e
@@ -78,7 +82,7 @@ object SparkFetcher {
 
   val SPARK_EVENT_LOG_ENABLED_KEY = "spark.eventLog.enabled"
   val SPARK_EVENT_LOG_ENABLE_RECURSE = "spark.eventLog.recurse.enabled"
-  val DEFAULT_TIMEOUT = Duration(30, SECONDS)
+  val DEFAULT_TIMEOUT = Duration(300, SECONDS)
 
   private def doFetchData(
     sparkRestClient: SparkRestClient,
