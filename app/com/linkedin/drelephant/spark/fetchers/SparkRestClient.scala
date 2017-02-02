@@ -37,7 +37,8 @@ import javax.ws.rs.client.{Client, ClientBuilder, WebTarget}
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.NotFoundException
 
-import com.cardlytics.drelephant.exceptions.{InvalidJSONResponseException, MissingHistoryServerInfoException}
+import com.bretlowery.drelephant.exceptions.{InvalidJSONResponseException, MissingHistoryServerInfoException}
+import com.cardlytics.drelephant.exceptions.MissingHistoryServerInfoException
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 

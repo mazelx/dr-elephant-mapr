@@ -35,11 +35,10 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.TimeoutException;
 
 import com.linkedin.drelephant.util.Utils;
-import com.cardlytics.drelephant.exceptions.InvalidJSONResponseException;
-import com.cardlytics.drelephant.exceptions.MissingHistoryServerInfoException;
+import com.bretlowery.drelephant.exceptions.InvalidJSONResponseException;
+import com.bretlowery.drelephant.exceptions.MissingHistoryServerInfoException;
 import models.AppResult;
 
 import org.apache.commons.lang.exception.ExceptionUtils;

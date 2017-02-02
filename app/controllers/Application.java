@@ -42,7 +42,7 @@ import java.util.TreeSet;
 
 import models.AppHeuristicResult;
 import models.AppResult;
-import com.cardlytics.drelephant.aggregates.UserSeverityAggregate;
+import com.bretlowery.drelephant.aggregates.UserSeverityAggregate;
 
 import org.apache.commons.collections.OrderedMap;
 import org.apache.commons.collections.map.ListOrderedMap;
@@ -55,7 +55,6 @@ import play.data.Form;
 import play.libs.Json;
 import play.mvc.Controller;
 import play.mvc.Result;
-import scala.Int;
 import views.html.help.metrics.helpRuntime;
 import views.html.help.metrics.helpWaittime;
 import views.html.help.metrics.helpUsedResources;
@@ -83,7 +82,6 @@ import views.html.results.jobHistoryResults;
 import views.html.results.flowHistoryResults;
 import views.html.results.flowMetricsHistoryResults;
 import views.html.results.jobMetricsHistoryResults;
-import views.html.page.helpPage;
 import views.html.page.oldHelpPage;
 
 import com.google.gson.*;

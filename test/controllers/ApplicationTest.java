@@ -18,7 +18,7 @@ package controllers;
 
 import com.avaje.ebean.Query;
 import models.AppResult;
-import com.cardlytics.drelephant.aggregates.UserSeverityAggregate;
+import com.bretlowery.drelephant.aggregates.UserSeverityAggregate;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

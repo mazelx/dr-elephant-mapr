@@ -1,4 +1,4 @@
-package com.cardlytics.drelephant.exceptions;
+package com.bretlowery.drelephant.exceptions;
 
 /**
  * Created by blowery on 12/29/2016.

@@ -1,4 +1,4 @@
-package com.cardlytics.drelephant.aggregates;
+package com.bretlowery.drelephant.aggregates;
 
 import com.linkedin.drelephant.analysis.Severity;
 
