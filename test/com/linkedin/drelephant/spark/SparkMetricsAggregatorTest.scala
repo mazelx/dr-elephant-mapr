@@ -14,7 +14,7 @@
  * the License.
  */
 
-package com.linkedin.drelephant.spark
+package com.linkedin.drelephant.spark.data
 
 import java.util.Date
 
@@ -22,10 +22,10 @@ import scala.collection.JavaConverters
 
 import com.linkedin.drelephant.analysis.ApplicationType
 import com.linkedin.drelephant.configurations.aggregator.AggregatorConfigurationData
-import com.cardlytics.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary}
 import org.apache.spark.scheduler.SparkListenerEnvironmentUpdate
 import org.scalatest.{FunSpec, Matchers}
+import com.linkedin.drelephant.spark.SparkMetricsAggregator
 
 class SparkMetricsAggregatorTest extends FunSpec with Matchers {
   import SparkMetricsAggregatorTest._

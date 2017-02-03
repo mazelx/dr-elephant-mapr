@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
 
 import com.linkedin.drelephant.analysis.{AnalyticJob, ElephantFetcher}
 import com.linkedin.drelephant.configurations.fetcher.FetcherConfigurationData
-import com.cardlytics.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
+import com.linkedin.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
 import com.linkedin.drelephant.util.SparkUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.log4j.Logger

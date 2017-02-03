@@ -25,7 +25,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import com.google.common.io.Files
 import com.linkedin.drelephant.analysis.{AnalyticJob, ApplicationType}
 import com.linkedin.drelephant.configurations.fetcher.FetcherConfigurationData
-import com.cardlytics.drelephant.spark.data.{SparkLogDerivedData, SparkRestDerivedData}
+import com.linkedin.drelephant.spark.data.{SparkLogDerivedData, SparkRestDerivedData}
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo}
 import com.linkedin.drelephant.util.SparkUtils
 import org.apache.spark.SparkConf

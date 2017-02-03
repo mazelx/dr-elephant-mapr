@@ -20,7 +20,7 @@ import scala.collection.JavaConverters
 
 import com.linkedin.drelephant.analysis.{ApplicationType, Severity}
 import com.linkedin.drelephant.configurations.heuristic.HeuristicConfigurationData
-import com.cardlytics.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
+import com.linkedin.drelephant.spark.data.{SparkApplicationData, SparkLogDerivedData, SparkRestDerivedData}
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationInfo, JobData}
 import org.apache.spark.JobExecutionStatus
 import org.apache.spark.scheduler.SparkListenerEnvironmentUpdate

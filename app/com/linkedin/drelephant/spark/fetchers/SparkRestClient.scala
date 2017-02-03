@@ -31,14 +31,12 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
-import com.cardlytics.drelephant.spark.data.SparkRestDerivedData
+import com.linkedin.drelephant.spark.data.SparkRestDerivedData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary, JobData, StageData}
 import javax.ws.rs.client.{Client, ClientBuilder, WebTarget}
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.NotFoundException
-
 import com.bretlowery.drelephant.exceptions.{InvalidJSONResponseException, MissingHistoryServerInfoException}
-import com.cardlytics.drelephant.exceptions.MissingHistoryServerInfoException
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 

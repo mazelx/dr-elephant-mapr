@@ -13,8 +13,8 @@
 * License for the specific language governing permissions and limitations under
 * the License.
 *@
-@import com.bretlowery.drelephant.aggregates.UserSeverityAggregate
-@(userExceptionSummaryTitle: String, results: java.util.List[UserSeverityAggregate])
+
+@(title: String, usaresults: java.util.List[com.bretlowery.drelephant.aggregates.UserSeverityAggregate])
 
 @*
 * The layout of the homepage of Dr. Elephant or the dashboard
@@ -25,9 +25,9 @@
 * @param results The results to be displayed on the dashboard
 *@
 
-@if(results != null && results.nonEmpty) {
+@if(usaresults != null && usaresults.nonEmpty) {
     <div class="jumbotron card-table-b">
-        <h4>@userExceptionSummaryTitle</h4><br>
+        <h4>@title</h4><br>
         <table>
             <tr>
                 <td>User</td>
@@ -36,22 +36,22 @@
                 <td>Last Started On</td>
                 <td>Last Finished On</td>
             </tr>
-            @for(i <- 0 to results.size() - 1) {
+            @for(i <- 0 to usaresults.size() - 1) {
                 <tr>
                     <td>
-                    @results.get(i).getUsername()
+                    @usaresults.get(i).getUsername()
                     </td>
                     <td>
-                    @results.get(i).getSeverityText()
+                    @usaresults.get(i).getSeverityText()
                     </td>
                     <td>
-                    @results.get(i).getCountText()
+                    @usaresults.get(i).getCountText()
                     </td>
                     <td>
-                    @results.get(i).getStartTimeString()
+                    @usaresults.get(i).getStartTimeString()
                     </td>
                     <td>
-                    @results.get(i).getFinishTimeString()
+                    @usaresults.get(i).getFinishTimeString()
                     </td>
                 </tr>
             }
