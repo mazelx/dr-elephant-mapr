@@ -40,8 +40,7 @@ import javax.ws.rs.NotFoundException
 import com.bretlowery.drelephant.exceptions.{InvalidJSONResponseException, MissingHistoryServerInfoException}
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
-import org.apache.spark.JobExecutionStatus
-import org.apache.spark.status.api.v1.StageStatus
+
 
 
 /**
@@ -106,86 +105,44 @@ class SparkRestClient(sparkConf: SparkConf) {
       val appTarget = getAPITarget().path(s"applications/${appId}")
       logger.info(s"calling REST API at ${appTarget.getUri}")
       try {
-        Option(getApplicationInfo(appId, appTarget)) match {
-          case Some(applicationInfo) => {
+ //       Option(getApplicationInfo(appId, appTarget)) match {
+ //         case Some(applicationInfo) => {
             // Limit scope of async.
-            async {
-              val lastAttemptId = applicationInfo.attempts.maxBy {
-                _.startTime
-              }.attemptId
-              lastAttemptId match {
-                case Some(attemptId) => {
-                  // yarn-cluster mode
-                  val attemptTarget = appTarget.path(attemptId)
-                  val futureJobDatas = async {
-                    getJobDatas(appId, attemptTarget)
-                  }
-                  val futureStageDatas = async {
-                    getStageDatas(appId, attemptTarget)
-                  }
-                  val futureExecutorSummaries = async {
-                    getExecutorSummaries(appId, attemptTarget)
-                  }
-                  SparkRestDerivedData(
-                    applicationInfo,
-                    await(futureJobDatas),
-                    await(futureStageDatas),
-                    await(futureExecutorSummaries)
-                  )
-                }
-                case _ => {
-                  // yarn-client mode
-                  val attemptTarget = appTarget
-                  val futureJobDatas = async {
-                    getJobDatas(attemptTarget)
-                  }
-                  val futureStageDatas = async {
-                    getStageDatas(attemptTarget)
-                  }
-                  val futureExecutorSummaries = async {
-                    getExecutorSummaries(attemptTarget)
-                  }
-                  SparkRestDerivedData(
-                    applicationInfo,
-                    await(futureJobDatas),
-                    await(futureStageDatas),
-                    await(futureExecutorSummaries)
-                  )
-                }
-              }
-            }
+          val applicationInfo = getApplicationInfo(appId, appTarget)
+          async {
+              val lastAttemptId = applicationInfo.attempts.maxBy {_.startTime}.attemptId
+              val attemptTarget = lastAttemptId.map(appTarget.path).getOrElse(appTarget)
+              val futureJobDatas = async { getJobDatas(appId, attemptTarget) }
+              val futureStageDatas = async { getStageDatas(appId, attemptTarget) }
+              val futureExecutorSummaries = async { getExecutorSummaries(appId, attemptTarget) }
+              SparkRestDerivedData(
+                applicationInfo,
+                await(futureJobDatas),
+                await(futureStageDatas),
+                await(futureExecutorSummaries)
+              )
           }
-          case _ => {
-            throw new MissingHistoryServerInfoException(s"application ${appId} has aged out of the YARN history server; skipping job and job will not be retried")
-          }
-        }
+ //         }
+ //         case _ => {
+//            if (! appId.equals("application_1")) {
+//              throw new MissingHistoryServerInfoException(s"application ${appId} has aged out of the YARN history server; skipping job and job will not be retried")
+ //           }
+ //         }
+ //       }
       } catch {
-        case e: com.fasterxml.jackson.core.JsonParseException => throw new InvalidJSONResponseException(s"error parsing JSON response from ${appTarget.getUri}; skipping job and job will not be retried")
-        case e: javax.ws.rs.NotFoundException => throw new MissingHistoryServerInfoException(s"Application ${appId} has aged out of the YARN History Server; skipping job and job will not be retried")
+        case e: com.fasterxml.jackson.core.JsonParseException =>
+            throw new InvalidJSONResponseException(s"error parsing JSON response from ${appTarget.getUri}; skipping job and job will not be retried")
+        case e: javax.ws.rs.NotFoundException =>
+            throw new MissingHistoryServerInfoException(s"Application ${appId} has aged out of the YARN History Server; skipping job and job will not be retried")
         case NonFatal(e) => throw e
       }
   }
 
   private def getApplicationInfo(appId: String, appTarget: WebTarget): ApplicationInfo = {
-    if (appId.equals("application_1")) {
-      val s = new Date(System.currentTimeMillis() - (2 * 60 * 60 * 1000))
-      val e = new Date(System.currentTimeMillis())
-      val testAttemptInfo: Seq[ApplicationAttemptInfo] = Seq(new ApplicationAttemptInfo(Option("1"), s, e, "TESTUSER"))
-      val testAppInfo: ApplicationInfo = new ApplicationInfo(appId, "TEST", testAttemptInfo)
-      testAppInfo
-    } else {
       get(appId, appTarget, SparkRestObjectMapper.readValue[ApplicationInfo])
-    }
   }
 
   private def getJobDatas(appId: String, attemptTarget: WebTarget): Seq[JobData] = {
-    if (appId.equals("application_1")) {
-      val s = new Date(System.currentTimeMillis() - (2 * 60 * 60 * 1000))
-      val e = new Date(System.currentTimeMillis())
-      val testJobData: JobData = new JobData(1, "testjob", "test job", s, e, Seq(1),
-        Option("testgroup"), JobExecutionStatus.SUCCEEDED, 1,0,1,0,0,0,1,0,0)
-      Seq(testJobData)
-    } else {
       val target = attemptTarget.path("jobs")
       try {
         get(appId, target, SparkRestObjectMapper.readValue[Seq[JobData]])
@@ -195,14 +152,9 @@ class SparkRestClient(sparkConf: SparkConf) {
           throw e
         }
       }
-    }
   }
 
   private def getStageDatas(appId: String,attemptTarget: WebTarget): Seq[StageData] = {
-    if (appId.equals("application_1")) {
-      val testStageData: StageData = new StageData(StageStatus.COMPLETE,
-        1,1,0,1,0,10000,1000,1,1000,1,0,0,0,0,0,0,"teststage","test stage","testpool")
-    } else {
       val target = attemptTarget.path("stages")
       try {
         get(appId, target, SparkRestObjectMapper.readValue[Seq[StageData]])
@@ -212,7 +164,6 @@ class SparkRestClient(sparkConf: SparkConf) {
           throw e
         }
       }
-    }
   }
 
   private def getExecutorSummaries(appId: String,attemptTarget: WebTarget): Seq[ExecutorSummary] = {
@@ -253,13 +204,21 @@ object SparkRestClient {
         txtresults = Source.fromURL(webTarget.getUri.toString()).mkString
     } catch {
       case e: java.io.FileNotFoundException =>
-        throw new MissingHistoryServerInfoException(s"${webTarget.getUri} was not found in the Spark History Server; skipping job and job will not be retried")
+        if (! appId.equals("application_1")) {
+          throw new MissingHistoryServerInfoException(s"${webTarget.getUri} was not found in the Spark History Server; skipping job and job will not be retried")
+        } else {
+          throw e
+        }
       case NonFatal(e) =>
         throw e
     }
     // Catch two special cases when and if history is not longer available.
     if (txtresults.contains("unknown app:") || txtresults.contains("no such app:")) {
+      if (! appId.equals("application_1")) {
         throw new MissingHistoryServerInfoException(s"${webTarget.getUri} was not found in the Spark History Server; skipping job and job will not be retried")
+      } else {
+        converter(webTarget.request(javax.ws.rs.core.MediaType.APPLICATION_JSON).get(classOf[String]))
+      }
     } else {
       try {
         // Attempt to parse text as JSON. If this errors CATCH block returns invalid JSON exception.
