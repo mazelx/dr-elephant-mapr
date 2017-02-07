@@ -91,7 +91,7 @@ class SparkRestClientTest extends AsyncFunSpec with Matchers {
     it("returns the desired data from the Spark REST API for client mode application") {
       import ExecutionContext.Implicits.global
       val fakeJerseyServer = new FakeJerseyServer() {
-        override def configure(): Application = super.configure() match {
+        override def configure(): Application = super.configure() match {lack
           case resourceConfig: ResourceConfig =>
             resourceConfig
               .register(classOf[FetchClientModeDataFixtures.ApiResource])

@@ -23,6 +23,7 @@ import scala.async.Async
 import scala.collection.mutable.HashMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
+import sys.process._
 
 import com.linkedin.drelephant.spark.data.SparkLogDerivedData
 import org.apache.hadoop.conf.Configuration
@@ -91,6 +92,8 @@ object SparkLogClient {
 
   val SPARK_EVENT_LOG_DIR_KEY = "spark.eventLog.dir"
   val HADOOP_DFS_NAMENODE_HTTP_ADDRESS_KEY = "dfs.namenode.http-address"
+  private val _CMD = s"hadoop version | grep mapr"
+  val DISTRO = _CMD.!!
 
   private implicit val formats: DefaultFormats = DefaultFormats
 
@@ -173,9 +176,18 @@ object SparkLogClient {
     val base = logBaseDir.toString.stripSuffix("/") + "/" + sanitize(appId)
     val codec = compressionCodecName.map("." + _).getOrElse("")
     if (appAttemptId.isDefined) {
-      new Path(base + "_" + sanitize(appAttemptId.get) + codec)
+      if (DISTRO.contains(s"mapr") && ! appId.equals("application_1")) {
+        new Path(base + "_" + sanitize(appAttemptId.get))
+      }
+      else {
+        new Path(base + "_" + sanitize(appAttemptId.get) + codec)
+      }
     } else {
-      new Path(base + codec)
+      if (DISTRO.contains(s"mapr") && ! appId.equals("application_1")) {
+        new Path(base)
+      } else {
+        new Path(base + codec)
+      }
     }
   }
 
