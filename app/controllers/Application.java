@@ -86,7 +86,6 @@ import views.html.page.oldHelpPage;
 
 import com.google.gson.*;
 
-
 public class Application extends Controller {
   private static final Logger logger = Logger.getLogger(Application.class);
   private static final long DAY = 24 * 60 * 60 * 1000;

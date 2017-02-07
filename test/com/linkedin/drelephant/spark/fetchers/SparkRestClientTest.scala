@@ -20,9 +20,9 @@ import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date, SimpleTimeZone}
 
+import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext
-import scala.util.Try
-
+import scala.util.{Failure, Success, Try}
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary, JobData, StageData}
@@ -30,6 +30,10 @@ import javax.ws.rs.{GET, Path, PathParam, Produces}
 import javax.ws.rs.client.WebTarget
 import javax.ws.rs.core.{Application, MediaType}
 import javax.ws.rs.ext.ContextResolver
+
+import com.linkedin.drelephant.analysis.Severity
+import controllers.Application
+import models.{AppHeuristicResult, AppResult}
 import org.apache.spark.SparkConf
 import org.glassfish.jersey.client.ClientConfig
 import org.glassfish.jersey.server.ResourceConfig
@@ -37,12 +41,12 @@ import org.glassfish.jersey.test.{JerseyTest, TestProperties}
 import org.scalatest.{AsyncFunSpec, Matchers}
 import org.scalatest.compatible.Assertion
 
+
+
 class SparkRestClientTest extends AsyncFunSpec with Matchers {
 
   import SparkRestClientTest._
 
-}
-/**
   describe("SparkRestClient") {
     /**
     it("throws an exception if spark.eventLog.dir is missing") {
@@ -86,11 +90,9 @@ class SparkRestClientTest extends AsyncFunSpec with Matchers {
     }
   }
 }
-  **/
 
 object SparkRestClientTest {
-}
-/**
+
   class FakeJerseyServer extends JerseyTest {
     override def configure(): Application = {
       forceSet(TestProperties.CONTAINER_PORT, "0")
@@ -125,8 +127,11 @@ object SparkRestClientTest {
   }
 
   object FetchDataFixtures {
-    val APP_ID = "application_1"
-    val APP_NAME = "app"
+    val APP_ID = "application_0000000000001_TEST"
+    val APP_NAME = "fakeapp1"
+    searchParams.put(Application.APP_ID, "1")
+    query1 = Application.generateSearchQuery("name", searchParams)
+    assertNotNull(query1.findList)
 
     @Path("/api/v1")
     class ApiResource {
@@ -195,4 +200,3 @@ object SparkRestClientTest {
     completed = true
   )
 }
-      **/

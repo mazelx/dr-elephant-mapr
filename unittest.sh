@@ -29,7 +29,7 @@ function play_command() {
 }
 
 # Default configurations
-HADOOP_VERSION="2.3.0"
+HADOOP_VERSION="2.7.0"
 SPARK_VERSION="1.6.1"
 
 # User should pass an optional argument which is a path to config file
@@ -126,26 +126,4 @@ app_conf=${project_root}/app-conf
 rm -rf ${project_root}/dist
 mkdir dist
 
-play_command $OPTS clean test compile dist
-
-cd target/universal
-
-ZIP_NAME=`/bin/ls *.zip`
-unzip ${ZIP_NAME}
-rm ${ZIP_NAME}
-DIST_NAME=${ZIP_NAME%.zip}
-
-chmod +x ${DIST_NAME}/bin/dr-elephant
-
-# Append hadoop classpath and the ELEPHANT_CONF_DIR to the Classpath
-sed -i.bak $'/declare -r app_classpath/s/.$/:`hadoop classpath`:${ELEPHANT_CONF_DIR}"/' ${DIST_NAME}/bin/dr-elephant
-
-cp $start_script ${DIST_NAME}/bin/
-
-cp $stop_script ${DIST_NAME}/bin/
-
-cp -r $app_conf ${DIST_NAME}
-
-zip -r ${DIST_NAME}.zip ${DIST_NAME}
-
-mv ${DIST_NAME}.zip ${project_root}/dist/
+play_command $OPTS clean test 

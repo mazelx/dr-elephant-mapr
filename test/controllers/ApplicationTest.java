@@ -42,7 +42,8 @@ import static org.junit.Assert.assertTrue;
 public class ApplicationTest {
   private static final long DAY = 24 * 60 * 60 * 1000;
 
-  private Content renderHomePage() {
+  @Test
+  public void testRenderHomePage() {
     String rightNow = new SimpleDateFormat("yyyy.MM.dd HH.mm.ss").format(new Date());
     Long now = System.currentTimeMillis();
     Long sevenDaysAgo = now - (7 * DAY);
@@ -55,93 +56,13 @@ public class ApplicationTest {
             searchResults.render(badTitle, null),
             userSeverityAggregateResults.render(usaTitle, usaResults)
     );
-    return html;
-  }
-
-   //  assertTrue(html.body().contains("<b>5</b> jobs ran on this cluster in the last 72h"));
-   // assertTrue(html.body().contains("<b>2</b> of them could use some tuning"));
-    //assertTrue(html.body().contains("<b>3</b> of them threw critical errors and need attention"));
-    //assertTrue(html.body().contains("No exceptions occurred."));
-    //assertTrue(html.body().contains(usaTitle));
-
-  @Test
-  public void testRenderHomePage() {
-    return;
- /**
-  * testRenderHomePage_IsHTML();
-    testRenderHomePage_CheckDateDisplay();
-    testRenderHomePage_CheckJobCount();
-    testRenderHomePage_CheckCouldUseSomeTuningCount();
-    testRenderHomePage_CheckThrewCriticalErrorsAndNeedAttentionCount();
-    testRenderHomePage_CheckUseSearchPage();
-    testRenderHomePage_CheckTopUniqueOffenderd();
-    testRenderHomePage_CheckGoodTitle();
-    testRenderHomePage_CheckBadTitle();
-  **/
-  }
-
-/**
-  @Test
-  public void testRenderHomePage_IsHTML() {
-    Content html = renderHomePage();
     assertEquals("text/html", html.contentType());
-  }
-
-  @Test
-  public void testRenderHomePage_CheckDateDisplay() {
-    Content html = renderHomePage();
-    assertTrue(html.body().contains("As Of <b>"));
-  }
-
-  @Test
-  public void testRenderHomePage_CheckJobCount() {
-    Content  html = renderHomePage();
     assertTrue(html.body().contains("<b>5</b> jobs ran on this cluster in the last 72h"));
-  }
-
-  @Test
-  public void testRenderHomePage_CheckCouldUseSomeTuningCount() {
-    Content  html = renderHomePage();
     assertTrue(html.body().contains("<b>2</b> of them could use some tuning"));
-  }
-
-  @Test
-  public void testRenderHomePage_CheckThrewCriticalErrorsAndNeedAttentionCount() {
-    Content  html = renderHomePage();
     assertTrue(html.body().contains("<b>3</b> of them threw critical errors and need attention"));
+    assertTrue(html.body().contains("No exceptions occurred."));
   }
 
-  @Test
-  public void testRenderHomePage_CheckUseSearchPage() {
-    Content  html = renderHomePage();
-    assertTrue(html.body().contains("Use the Search page above for more detailed reporting."));
-  }
-
-  @Test
-  public void testRenderHomePage_CheckTopUniqueOffenderd() {
-    Content  html = renderHomePage();
-    assertTrue(html.body().contains("Top Unique Offenders in Last 72Hr"));
-  }
-
-  @Test
-  public void testRenderHomePage_CheckGoodTitle() {
-    Content  html = renderHomePage();
-    assertTrue(html.body().contains("Last 15 Days, OK/Low/Moderate Status (Max 50 Jobs)"));
-  }
-
-  @Test
-  public void testRenderHomePage_CheckBadTitle() {
-    Content  html = renderHomePage();
-    assertTrue(html.body().contains("Last 15 Days, Severe/Critical Status (Max 50 Jobs)"));
-  }
-
-  @Test
-  public void testRenderSearch() {
-    Content html = searchResults.render("Latest analysis", null);
-    assertEquals("text/html", html.contentType());
-    assertTrue(html.body().contains("Latest analysis"));
-  }
-**/
 
   public static FakeApplication app;
 
