@@ -68,7 +68,7 @@ public class ElephantRunner implements Runnable {
   private ThreadPoolExecutor _threadPoolExecutor;
   private AnalyticJobGenerator _analyticJobGenerator;
   private long _startTime;
-  private boolean _caughtUp = false;
+  private boolean _startingUp = true;
 
   private void loadGeneralConfiguration() {
     Configuration configuration = ElephantContext.instance().getGeneralConf();
@@ -95,7 +95,7 @@ public class ElephantRunner implements Runnable {
   @Override
   public void run() {
     _startTime = System.currentTimeMillis();
-    _caughtUp = false;
+    _startingUp = true;
     String version = play.Play.application().configuration().getString("version", "");
     logger.info("Dr. Elephant "+version+" starting");
     try {
@@ -147,9 +147,12 @@ public class ElephantRunner implements Runnable {
 
             for (AnalyticJob analyticJob : todos) {
               _threadPoolExecutor.submit(new ExecutorJob(analyticJob));
-              if (analyticJob.getStartTime() >= _startTime && ! _caughtUp) {
+              if (_startingUp) {
+                // throttle burst of REST API requests at startup
+                waitInterval(1000);
+              }
+              if (analyticJob.getStartTime() >= _startTime && ! _startingUp) {
                 logger.info("ALL CAUGHT UP as of now");
-                _caughtUp = true;
               }
             }
 
@@ -158,6 +161,7 @@ public class ElephantRunner implements Runnable {
             logger.info("Job queue size is " + queueSize);
 
             //Wait for a while before next fetch
+            _startingUp = false;
             waitInterval(_fetchInterval);
           }
           logger.info("Main thread is terminated.");
@@ -209,9 +213,16 @@ public class ElephantRunner implements Runnable {
         logger.info(e.getMessage());
         logger.info(ExceptionUtils.getStackTrace(e));
         Thread.currentThread().interrupt();
-      } catch (InvalidJSONResponseException | MissingHistoryServerInfoException | java.util.concurrent.TimeoutException e) {
-        if (_analyticJob != null) {
-          MetricsController.markSkippedJob();
+      } catch (InvalidJSONResponseException | MissingHistoryServerInfoException e) {
+        if (_analyticJob != null && _analyticJob.retry()) {
+          logger.error("Add analytic job id [" + _analyticJob.getAppId() + "] into the retry list.");
+          _analyticJobGenerator.addIntoRetries(_analyticJob);
+        } else {
+          if (_analyticJob != null) {
+            MetricsController.markSkippedJob();
+            logger.error("Drop the analytic job. Reason: reached the max retries for application id = ["
+                    + _analyticJob.getAppId() + "].");
+          }
         }
       } catch (Exception e) {
         logger.error(e.getMessage());

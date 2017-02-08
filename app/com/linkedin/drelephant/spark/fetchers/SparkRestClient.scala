@@ -16,7 +16,6 @@
 
 package com.linkedin.drelephant.spark.fetchers
 
-import java.awt.PageAttributes.MediaType
 import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date, SimpleTimeZone}
@@ -24,24 +23,21 @@ import java.util.{Calendar, Date, SimpleTimeZone}
 import scala.async.Async
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
-import scala.util.control.{Exception, NonFatal}
-import sys.process._
-import com.fasterxml.jackson.core.JsonParseException
+import scala.util.control.NonFatal
+
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.linkedin.drelephant.spark.data.SparkRestDerivedData
-import com.linkedin.drelephant.spark.fetchers.statusapiv1._
+import com.linkedin.drelephant.spark.fetchers.statusapiv1.{ApplicationAttemptInfo, ApplicationInfo, ExecutorSummary, JobData, StageData}
 import javax.ws.rs.client.{Client, ClientBuilder, WebTarget}
 import javax.ws.rs.core.MediaType
-import javax.ws.rs.NotFoundException
-
-import com.bretlowery.drelephant.exceptions.{InvalidJSONResponseException, MissingHistoryServerInfoException}
 import org.apache.log4j.Logger
 import org.apache.spark.SparkConf
 
 
+import com.bretlowery.drelephant.exceptions.{InvalidJSONResponseException, MissingHistoryServerInfoException}
+import sys.process._
 
 /**
   * A client for getting data from the Spark monitoring REST API, e.g. <https://spark.apache.org/docs/1.4.1/monitoring.html#rest-api>.
@@ -53,6 +49,11 @@ class SparkRestClient(sparkConf: SparkConf) {
 
   import SparkRestClient._
   import Async.{async, await}
+
+  private val _CMD1 = s"hadoop version | grep mapr"
+  private val DISTRO = _CMD1.!!
+  private val _CMD2 = s"maprcli urls -name spark-historyserver | grep http"
+  private val MAPR_HISTORYSERVERADDRESS = _CMD2.!!
 
   private val logger: Logger = Logger.getLogger(classOf[SparkRestClient])
 
@@ -79,22 +80,22 @@ class SparkRestClient(sparkConf: SparkConf) {
   }
 
   private def getMaprHistoryServer(): URI = {
-    val cmd = s"maprcli urls -name spark-historyserver | grep http"
-    val results = cmd.!!
-    Option(results) match {
-      case Some(maprUri) =>
-        val baseUri = new URI(cleanString(maprUri))
-        require(baseUri.getPath == "")
-        baseUri
-      case _ =>
-        throw new IllegalArgumentException(s"<maprcli urls -name spark-historyserver> did not return the Spark History Server URL as expected; can't use Spark REST API")
+    if (DISTRO.contains(s"mapr")) {
+      Option(MAPR_HISTORYSERVERADDRESS) match {
+        case Some(maprUri) =>
+          val baseUri = new URI(cleanString(maprUri))
+          require(baseUri.getPath == "")
+          baseUri
+        case _ =>
+          throw new IllegalArgumentException(s"<maprcli urls -name spark-historyserver> did not return the Spark History Server URL as expected; can't use Spark REST API")
+      }
+    } else {
+      getHistoryServer()
     }
   }
 
   private def getAPITarget(): WebTarget = {
-    val cmd = s"hadoop version | grep mapr"
-    val results = cmd.!!
-    if (results.contains(s"mapr")) {
+    if (DISTRO.contains(s"mapr")) {
       client.target(getMaprHistoryServer()).path(API_V1_MOUNT_PATH)
     } else {
       client.target(getHistoryServer()).path(API_V1_MOUNT_PATH)
@@ -104,9 +105,7 @@ class SparkRestClient(sparkConf: SparkConf) {
   def fetchData(appId: String)(implicit ec: ExecutionContext): Future[SparkRestDerivedData] = {
       val appTarget = getAPITarget().path(s"applications/${appId}")
       logger.info(s"calling REST API at ${appTarget.getUri}")
-      try {
- //       Option(getApplicationInfo(appId, appTarget)) match {
- //         case Some(applicationInfo) => {
+ //     try {
             // Limit scope of async.
           val applicationInfo = getApplicationInfo(appId, appTarget)
           async {
@@ -122,20 +121,11 @@ class SparkRestClient(sparkConf: SparkConf) {
                 await(futureExecutorSummaries)
               )
           }
- //         }
- //         case _ => {
-//            if (! appId.equals("application_1")) {
-//              throw new MissingHistoryServerInfoException(s"application ${appId} has aged out of the YARN history server; skipping job and job will not be retried")
- //           }
- //         }
- //       }
-      } catch {
-        case e: com.fasterxml.jackson.core.JsonParseException =>
-            throw new InvalidJSONResponseException(s"error parsing JSON response from ${appTarget.getUri}; skipping job and job will not be retried")
-        case e: javax.ws.rs.NotFoundException =>
-            throw new MissingHistoryServerInfoException(s"Application ${appId} has aged out of the YARN History Server; skipping job and job will not be retried")
-        case NonFatal(e) => throw e
-      }
+ //     } catch {
+ //       case e: com.fasterxml.jackson.core.JsonParseException =>
+ //         throw new InvalidJSONResponseException(s"${appTarget.getUri} did not return valid JSON. This may be caused by either a Spark History Server crash or a recent restart of the SHS with recovery in progress. Will retry shortly.")
+ //       case NonFatal(e) => throw e
+ //     }
   }
 
   private def getApplicationInfo(appId: String, appTarget: WebTarget): ApplicationInfo = {
@@ -148,7 +138,7 @@ class SparkRestClient(sparkConf: SparkConf) {
         get(appId, target, SparkRestObjectMapper.readValue[Seq[JobData]])
       } catch {
         case NonFatal(e) => {
-          logger.error(s"error reading JobData for ${target.getUri}, skipping data")
+          logger.error(s"error reading JobData for ${target.getUri}")
           throw e
         }
       }
@@ -160,7 +150,7 @@ class SparkRestClient(sparkConf: SparkConf) {
         get(appId, target, SparkRestObjectMapper.readValue[Seq[StageData]])
       } catch {
         case NonFatal(e) => {
-          logger.error(s"error reading StageData for ${target.getUri}, skipping data")
+          logger.error(s"error reading StageData for ${target.getUri}")
           throw e
         }
       }
@@ -172,7 +162,7 @@ class SparkRestClient(sparkConf: SparkConf) {
       get(appId, target, SparkRestObjectMapper.readValue[Seq[ExecutorSummary]])
     } catch {
       case NonFatal(e) => {
-        logger.error(s"error reading ExecutorSummaries for ${target.getUri}, skipping data")
+        logger.error(s"error reading ExecutorSummaries for ${target.getUri}")
         throw e
       }
     }
@@ -198,39 +188,18 @@ object SparkRestClient {
   }
 
   def get[T](appId: String, webTarget: WebTarget, converter: String => T): T = {
-    var txtresults: String = ""
+ /**
+    // Read the history server response as text first rather than as json directly; then try to parse as JSON.
+    // This avoids HTTP 500 errors on the converter() call should response not be JSON format.
+   val txtresults = Source.fromURL(webTarget.getUri.toString()).mkString
     try {
-      // Read the history server response as text first rather than as json directly. This avoids HTTP 500 errors should response not be JSON format.
-        txtresults = Source.fromURL(webTarget.getUri.toString()).mkString
+      val jsonresults: com.fasterxml.jackson.databind.JsonNode = objectMapper.readTree(txtresults)
     } catch {
-      case e: java.io.FileNotFoundException =>
-        if (! appId.equals("application_1")) {
-          throw new MissingHistoryServerInfoException(s"${webTarget.getUri} was not found in the Spark History Server; skipping job and job will not be retried")
-        } else {
-          throw e
-        }
-      case NonFatal(e) =>
-        throw e
+      case e: com.fasterxml.jackson.core.JsonParseException =>
+        throw new InvalidJSONResponseException(s"${webTarget.getUri} did not return valid JSON. This may be caused by either a Spark History Server crash or a recent restart of the SHS with recovery in progress. Will retry shortly.")
+      case NonFatal(e) => throw e
     }
-    // Catch two special cases when and if history is not longer available.
-    if (txtresults.contains("unknown app:") || txtresults.contains("no such app:")) {
-      if (! appId.equals("application_1")) {
-        throw new MissingHistoryServerInfoException(s"${webTarget.getUri} was not found in the Spark History Server; skipping job and job will not be retried")
-      } else {
-        converter(webTarget.request(javax.ws.rs.core.MediaType.APPLICATION_JSON).get(classOf[String]))
-      }
-    } else {
-      try {
-        // Attempt to parse text as JSON. If this errors CATCH block returns invalid JSON exception.
-        val jsonresults: com.fasterxml.jackson.databind.JsonNode = objectMapper.readTree(txtresults)
-        converter(webTarget.request(javax.ws.rs.core.MediaType.APPLICATION_JSON).get(classOf[String]))
-      } catch {
-        case e: com.fasterxml.jackson.core.JsonParseException =>
-          throw new InvalidJSONResponseException(s"${webTarget.getUri} did not return valid JSON; skipping job and job will not be retried")
-        case NonFatal(e) =>
-          throw e
-      }
-    }
+  **/
+    converter(webTarget.request(MediaType.APPLICATION_JSON).get(classOf[String]))
   }
-
 }

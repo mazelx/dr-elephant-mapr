@@ -81,7 +81,6 @@ object SparkFetcher {
   import Async.{async, await}
 
   val SPARK_EVENT_LOG_ENABLED_KEY = "spark.eventLog.enabled"
-  val SPARK_EVENT_LOG_ENABLE_RECURSE = "spark.eventLog.recurse.enabled"
   val DEFAULT_TIMEOUT = Duration(300, SECONDS)
 
   private def doFetchData(
@@ -91,7 +90,6 @@ object SparkFetcher {
   )(
     implicit ec: ExecutionContext
   ): Future[SparkApplicationData] = async {
-
     val restDerivedData = await(sparkRestClient.fetchData(appId))
     val lastAttemptId:Option[String] = restDerivedData.applicationInfo.attempts.maxBy { _.startTime }.attemptId
     // Would use .map but await doesn't like that construction.
